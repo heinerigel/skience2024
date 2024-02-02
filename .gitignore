@@ -17,6 +17,10 @@ Untitled*.ipynb
 __pycache__/
 *.py[cod]
 *$py.class
+._*/
+Monday_Afternoon/._data
+Monday_Afternoon/data/continuous/._*
+
 
 # C extensions
 *.so
