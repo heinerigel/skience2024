@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 import matplotlib as mpl
 import numpy as np
 
-filen = "/2018_Strokkur/VI.*"
-respfolder = "/2018_Strokkur/"
+filen = "2018_Strokkur/VI.*"
+respfolder = "2018_Strokkur/"
 localpath = "/data/data/13_Strokkur/"
 statlist = ["S1", "S2", "S3", "S4", "S5"]
 Easting = [533814.8959, 533822.2077, 533826.0672, 533814.4101, 533826.5201]
@@ -26,7 +26,7 @@ fmin = 2
 fmax = 9
 array = "S"
 pmlim = 0.0000013
-dimension = "3D"
+dimension = "2D"
 
 
 fig = plt.figure(figsize=(7.48, 1.2 * 7.48))
