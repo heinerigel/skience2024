@@ -12,7 +12,7 @@ from scipy import signal
 import numpy as np
 
 localpath = "/data/data/13_Strokkur/"
-datapath = "/2019_Etna/"
+datapath = "2019_Etna/"
 prefilt = [0.008, 0.01, 95, 99]
 fmin = 0.5
 fmax = 20
