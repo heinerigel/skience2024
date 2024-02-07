@@ -12,9 +12,9 @@ import matplotlib as mpl
 import numpy as np
 
 # we set paths
-filen = "/data/data/code_python/skience2024/Wavefield_polarisation/2018_Strokkur/VI.*"
-respfolder = "/data/data/code_python/skience2024/Wavefield_polarisation/2018_Strokkur/"
-localpath = "/data/data/13_Strokkur/"
+filename = "2018_Strokkur/VI.*"
+datafolder = "2018_Strokkur/"
+localpath = "figure_output/"
 
 # we set station coordinates
 statlist = ["S1", "S2", "S3", "S4", "S5"]
@@ -52,7 +52,7 @@ def animate(frame):
     tend_late = tend + 1 * 30
 
     # Please read in the seismic data using the 'read' function 
-    st = read(filen, starttime=tstart_early, endtime=tend_late)
+    st = read(filename, starttime=tstart_early, endtime=tend_late)
 
     # we do further preprocessing 
     print(st)
@@ -63,7 +63,7 @@ def animate(frame):
 
     # we remove the instrument response using a stationxml file
     for tr in st:
-        inv = read_inventory(respfolder + "Stations_S.xml")
+        inv = read_inventory(datafolder + "Stations_S.xml")
         pre_filt = [prefilt[0], prefilt[1], prefilt[2], prefilt[3]]
         tr.remove_response(inventory=inv, pre_filt=pre_filt, output="VEL")
 
@@ -139,7 +139,7 @@ def animate(frame):
         # we save the figures separately, Note if wanted, set 'frame = 1' and uncomment here
         # if i==2:
         #    fig.subplots_adjust(hspace=0.32, wspace = 0.32, bottom=0.07, left=0.10, right=0.99, top=0.96)
-        #    savefile = localpath + 'teaching_MESS/'+str(tstart.year) +'_'+ str(tstart.month) +'_'+\
+        #    savefile = localpath + str(tstart.year) +'_'+ str(tstart.month) +'_'+\
         #                    str(tstart.day) +'_'+str(tstart.hour)+':'+str(tstart.minute)+':'+\
         #                    str(tstart.second)+'.'+str(int(tstart.microsecond/100000))+'-'+\
         #                    str(tend.hour)+':'+str(tend.minute)+':'+str(tend.second)+'.'+\
@@ -196,7 +196,7 @@ def animate(frame):
             ax4.set_zlabel("Height (m)")
 
             # if(i==4):  ## -- saving --
-            #    plt.savefig(localpath + 'teaching_MESS/Strokkur_particle_motion.png', format='png', dpi=300) #, transparent=True)
+            #    plt.savefig(localpath + 'Strokkur_particle_motion.png', format='png', dpi=300) #, transparent=True)
             #    plt.show()
             #    plt.close()
 
@@ -208,6 +208,6 @@ anim = animation.FuncAnimation(fig, animate, frames=10, interval=1000, blit=Fals
 print("Saving video")
 writervideo = animation.FFMpegWriter(fps=10)
 anim.save(
-    localpath + "teaching_MESS/Geyser_tremor_" + dimension + "...mp4", writer=writervideo
+    localpath + "Geyser_tremor_" + dimension + "...mp4", writer=writervideo
 )
 plt.close()
