@@ -11,6 +11,7 @@ dependencies:
   - jupyter
   - msnoise=1.6
   - sqlalchemy<2.0
+  - sqlalchemy-utils
   - obspy=1.4
   - pandas
   - pdbpp
@@ -32,3 +33,4 @@ dependencies:
   - pygmt
   - pip:
     - git+https://github.com/ROBelgium/MSNoise.git
+    - disba
