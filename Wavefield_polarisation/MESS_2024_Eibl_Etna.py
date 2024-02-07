@@ -28,7 +28,13 @@ vmin = 2 * 10**-17
 vmax = 3.0 * 10**-16
 log = False
 
+
 def plotting_6C(st, trans_max, rot_max):
+    # we initialise the figure
+    fig = plt.figure(figsize=(7.48, 8.48))
+    mpl.rcParams.update({"font.size": 8})
+    mpl.rcParams["pcolor.shading"]
+
     for i in range(6):
         ax0 = plt.subplot(6, 2, 1 + 2 * i)
         # please plot the seismograms. 
@@ -207,13 +213,8 @@ for ii in range(6):
     # we integrate to convert the rotational sensor data to rotation
     st_rot.integrate()
 
-    # we merge seismometer and rotational sensor data into one stream object
+    # please merge seismometer and rotational sensor data into one stream object
     st = st_trans + st_rot
-
-    # we initialise the figure
-    fig = plt.figure(figsize=(7.48, 8.48))
-    mpl.rcParams.update({"font.size": 8})
-    mpl.rcParams["pcolor.shading"]
 
     # we derive the y axes limits 
     trans_max = np.abs(st_trans[0].max())
