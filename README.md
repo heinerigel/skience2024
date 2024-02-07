@@ -39,11 +39,11 @@ https://www.skience.de/2024
 
     ` conda env remove --name skience24 `
 
-If you have issues with the setup, please share the error messages on Mattermost -> Channel "Installation - Software Issues" !
-
 6) Clone the git repository
    
     TODO!!!
+
+If you have issues with the setup, please share the error messages on Mattermost -> Channel "Installation - Software Issues" !
 
 
 For reference, a quick explanation on conda environment setup with yaml files can also be found here: 
