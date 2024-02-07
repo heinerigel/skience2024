@@ -12,8 +12,8 @@ from scipy import signal
 import numpy as np
 
 # we set paths
-localpath = "/data/data/13_Strokkur/"
-datapath = "/data/data/code_python/skience2024/Wavefield_polarisation/2019_Etna/"
+localpath = "figure_output/"
+datapath = "2019_Etna/"
 
 # we define filter and axis limits
 prefilt = [0.008, 0.01, 95, 99]
@@ -216,7 +216,7 @@ for ii in range(6):
     # we save the figure
     savefile = (
         localpath
-        + "teaching_MESS/seismogram_"
+        + "seismogram_"
         + str(tstart.year)
         + "_"
         + str(tstart.month)
