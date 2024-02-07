@@ -2,7 +2,7 @@
 # author: Eva Eibl
 # 11/1/2024
 # ------------------------------------------------------------------------------
-
+# we import packages
 from obspy.core import read, UTCDateTime
 import matplotlib.dates as mdates
 from obspy import read_inventory
@@ -11,8 +11,11 @@ import matplotlib as mpl
 from scipy import signal
 import numpy as np
 
+# we set paths
 localpath = "/data/data/13_Strokkur/"
-datapath = "2019_Etna/"
+datapath = "/data/data/code_python/skience2024/Wavefield_polarisation/2019_Etna/"
+
+# we define filter and axis limits
 prefilt = [0.008, 0.01, 95, 99]
 fmin = 0.5
 fmax = 20
@@ -24,10 +27,10 @@ vmax1 = 1.0 * 10**-10
 vmin = 2 * 10**-17
 vmax = 3.0 * 10**-16
 log = False
-stat = "RS1"
 
 for ii in range(6):
     if ii == 0:  # VT
+        # Please use 'UTCDateTime' to set tstart to 15:52:0 on 4 September 2019.
         tstart = UTCDateTime(2019, 9, 4, 15, 52, 0)
         tend = UTCDateTime(2019, 9, 4, 15, 54, 0)
         julday = 247
@@ -37,6 +40,7 @@ for ii in range(6):
         tend = UTCDateTime(2019, 9, 17, 18, 42, 30)
         julday = 260
     elif ii == 2:  # LP
+        # Please use 'UTCDateTime' to set tstart to 14:21:0 on 27 August 2019.
         tstart = UTCDateTime(2019, 8, 27, 14, 21, 0)
         tend = UTCDateTime(2019, 8, 27, 14, 22, 30)
         julday = 239
@@ -45,6 +49,7 @@ for ii in range(6):
         tend = UTCDateTime(2019, 8, 27, 12, 19, 30)
         julday = 239
     elif ii == 4:  # tremor
+        # Please use 'UTCDateTime' to set tstart to 12:18:0 on 8 September 2019.
         tstart = UTCDateTime(2019, 9, 8, 12, 18, 0)
         tend = UTCDateTime(2019, 9, 8, 12, 20, 0)
         julday = 251
@@ -53,69 +58,83 @@ for ii in range(6):
         tend = UTCDateTime(2019, 9, 9, 12, 20, 0)
         julday = 252
 
-    t2 = tend + 1 * 30
-    t3 = tstart - 1 * 30
+    # we define a wider time window for the plotting
+    tstart_early = tstart - 1 * 30
+    tend_late = tend + 1 * 30
 
-    # read in seismic data
+    # we read in the seismometer data
     fullpath = datapath + "ZR.RS1..HH*"
-    st_trans = read(fullpath, starttime=t3, endtime=t2)
-    st_trans.merge(method=1, fill_value="interpolate")
+    st_trans = read(fullpath, starttime=tstart_early, endtime=tend_late)
+
+    # we do further preprocessing of the seismometer data
+    print(st_trans)
     st_trans.detrend("demean")
     st_trans.detrend("linear")
     st_trans.taper(max_percentage=0.01, type="cosine")
-    print(st_trans)
     st_trans.taper(max_percentage=0.01, type="cosine")
-    print("remove instrument correction using stxml")
+
+    # we remove the instrument response using a stationxml file
     for tr in st_trans:
         inv = read_inventory(datapath + "Stations_Etna_2019_seis.xml")
         pre_filt = [prefilt[0], prefilt[1], prefilt[2], prefilt[3]]
         tr.remove_response(inventory=inv, pre_filt=pre_filt, output="VEL")
+
+    # we do further preprocessing of the seismometer data
     st_trans.detrend("demean")
     st_trans.detrend("linear")
-    print("filter & co")
     st_trans.taper(max_percentage=0.01, type="cosine")
     st_trans.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
     st_trans.trim(tstart, tend)
     st_trans.sort()
 
-    # read in rotational sensor data
+    # we read in the rotational sensor data
     fullpath = datapath + "ZR.RS1..HJ*"
     st_rot = read(fullpath, starttime=tstart, endtime=tend)
-    st_rot.merge(method=1, fill_value="interpolate")
-    st_rot.detrend("demean")
-    st_rot.detrend("linear")
-    st_rot.taper(max_percentage=0.01, type="cosine")
+
+    # we do further preprocessing 
     print(st_rot)
+    st_rot.detrend("demean")
+    st_rot.detrend("linear")
+    st_rot.taper(max_percentage=0.01, type="cosine")
     st_rot.taper(max_percentage=0.01, type="cosine")
     st_rot.detrend("demean")
     st_rot.detrend("linear")
-    print("filter & co")
     st_rot.taper(max_percentage=0.01, type="cosine")
     st_rot.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
     st_rot.trim(tstart, tend)
-    st_rot[0].data = st_rot[0].data * 1e-9  # unit: rad/s
-    st_rot[1].data = st_rot[1].data * 1e-9  # unit: rad/s
-    st_rot[2].data = st_rot[2].data * 1e-9  # unit: rad/s
-    st_rot.integrate()  # unit: rad
     st_rot.sort()
+
+    # we convert the rotational sensor rotation rate data from nanorad/s to rad/s, 
+    # the response is flat and no further instrument response removal is needed 
+    st_rot[0].data = st_rot[0].data * 1e-9
+    st_rot[1].data = st_rot[1].data * 1e-9
+    st_rot[2].data = st_rot[2].data * 1e-9
+
+    # we integrate to convert the rotational sensor data to rotation
+    st_rot.integrate()
+
+    # we merge seismometer and rotational sensor data into one stream object
     st = st_trans + st_rot
     siglen = int(np.floor(st_trans[0].stats.endtime - st_trans[0].stats.starttime))
 
-    # initialise figure
+    # we initialise the figure
     fig = plt.figure(figsize=(7.48, 8.48))
     mpl.rcParams.update({"font.size": 8})
     mpl.rcParams["pcolor.shading"]
+
+    # we derive the y axes limits 
     trans_max = np.abs(st_trans[0].max())
     rot_max = np.abs(st_rot[0].max())
-    for i in range(6):
-        ## -- plot seismogram --
-        ax0 = plt.subplot(6, 2, 1 + 2 * i)
-        ax0.plot(st[i].times("matplotlib"), st[i].data, "k", lw=0.4)
-        if i < 3:
-            ax0.set_ylim(-trans_max, trans_max)
-        else:
-            ax0.set_ylim(-rot_max, rot_max)
 
+    for i in range(6):
+        ax0 = plt.subplot(6, 2, 1 + 2 * i)
+        # please plot the seismograms. 
+        # Column 1 is from top to bottom: HHE, HHN, HHZ, HJE, HJN, HJZ
+        # We want to use the 'matplotlib' date format from 
+        # 'obspy.core.trace.Trace.times' for the time axes. 
+        ax0.plot(st[i].times("matplotlib"), st[i].data, "k", lw=0.4)
+
+        # we label the y axes
         if st[i].stats.channel == "HHE":
             chan = st[i].stats.channel + " (m/s)"
         if st[i].stats.channel == "HHN":
@@ -128,11 +147,19 @@ for ii in range(6):
             chan = " HJN (rad)"
         if st[i].stats.channel == "HJ3" or st[i].stats.channel == "HJZ":
             chan = " HJZ (rad)"
+
+        # we set the y axes limits
+        if i < 3:
+            ax0.set_ylim(-trans_max, trans_max)
+        else:
+            ax0.set_ylim(-rot_max, rot_max)
         ax0.set_ylabel(f"{st[i].stats.station}: {chan}")
+
+        # we format the seismometer time axis 
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
         plt.gca().xaxis.set_major_locator(mdates.SecondLocator(interval=ticks))
 
-        ## -- plot spectrogram --
+        # we plot the spectrograms
         ax1 = plt.subplot(6, 2, 2 + 2 * i)
         cmap = plt.cm.viridis
         f, t, Sxx = signal.spectrogram(
@@ -159,12 +186,12 @@ for ii in range(6):
                 vmax=vmax,
                 shading="gouraud",
             )  # flat is sharper
-
+        ax1.set_ylim(fmin, fmax)
+        ax1.set_ylabel("Frequency (Hz)")
         if log == True:
             ax1.set_yscale("symlog")
 
-        ax1.set_ylim(fmin, fmax)
-        ax1.set_ylabel("Frequency (Hz)")
+        # we label seismogram and spectrogram time axes
         if i == 5:
             ax0.set_xlabel(
                 f"Time on {(st[i].stats.starttime+2).day}/{st[i].stats.starttime.month}/{st[i].stats.starttime.year} (hh:mm:ss)"
@@ -173,153 +200,20 @@ for ii in range(6):
                 f"Time from {(st[i].stats.starttime+2).day}/{st[i].stats.starttime.month}/{st[i].stats.starttime.year} {st[i].stats.starttime.hour}:{st[i].stats.starttime.minute}:{st[i].stats.starttime.second}(s)"
             )
 
-        ## -- adapt axes --
-        ax0.tick_params(
-            "both", length=5, width=1, which="major", direction="in", top=True
-        )
-        ax1.tick_params(
-            "both", length=5, width=1, which="major", direction="in", top=True
-        )
-        ## -- remove xaxislabels
+        # we remove some x axis labels
         if i != len(st) - 1:
             plt.setp(ax0.get_xticklabels(), visible=False)
             plt.setp(ax1.get_xticklabels(), visible=False)
 
-        ## -- add colorbar --
+        # we add a colorbar
         if i < 3:
-            cbaxes = fig.add_axes([0.927, 0.522, 0.01, 0.45])
+            cbaxes = fig.add_axes([0.927, 0.505, 0.01, 0.37])
             cb = plt.colorbar(img, cax=cbaxes, label="Spectral density ((m/s)$^2$/Hz)")
         else:
-            cbaxes = fig.add_axes([0.927, 0.045, 0.01, 0.45])
+            cbaxes = fig.add_axes([0.927, 0.11, 0.01, 0.37])
             cb = plt.colorbar(img, cax=cbaxes, label="Spectral density ((rad)$^2$/Hz)")
 
-        ## -- add labels --
-        if i == 0:
-            ax0.text(
-                0.023,
-                0.87,
-                "a",
-                fontweight="bold",
-                fontsize=9,
-                zorder=10,
-                transform=ax0.transAxes,
-            )
-            ax1.text(
-                0.023,
-                0.87,
-                "g",
-                fontweight="bold",
-                fontsize=9,
-                backgroundcolor="white",
-                zorder=10,
-                transform=ax1.transAxes,
-            )
-        elif i == 1:
-            ax0.text(
-                0.023,
-                0.87,
-                "b",
-                fontweight="bold",
-                fontsize=9,
-                zorder=10,
-                transform=ax0.transAxes,
-            )
-            ax1.text(
-                0.023,
-                0.87,
-                "h",
-                fontweight="bold",
-                fontsize=9,
-                backgroundcolor="white",
-                zorder=10,
-                transform=ax1.transAxes,
-            )
-        elif i == 2:
-            ax0.text(
-                0.023,
-                0.87,
-                "c",
-                fontweight="bold",
-                fontsize=9,
-                zorder=10,
-                transform=ax0.transAxes,
-            )
-            ax1.text(
-                0.023,
-                0.87,
-                "i",
-                fontweight="bold",
-                fontsize=9,
-                backgroundcolor="white",
-                zorder=10,
-                transform=ax1.transAxes,
-            )
-        elif i == 3:
-            ax0.text(
-                0.023,
-                0.87,
-                "d",
-                fontweight="bold",
-                fontsize=9,
-                zorder=10,
-                transform=ax0.transAxes,
-            )
-            ax1.text(
-                0.023,
-                0.87,
-                "j",
-                fontweight="bold",
-                fontsize=9,
-                backgroundcolor="white",
-                zorder=10,
-                transform=ax1.transAxes,
-            )
-        elif i == 4:
-            ax0.text(
-                0.023,
-                0.87,
-                "e",
-                fontweight="bold",
-                fontsize=9,
-                zorder=10,
-                transform=ax0.transAxes,
-            )
-            ax1.text(
-                0.023,
-                0.87,
-                "k",
-                fontweight="bold",
-                fontsize=9,
-                backgroundcolor="white",
-                zorder=10,
-                transform=ax1.transAxes,
-            )
-        elif i == 5:
-            ax0.text(
-                0.023,
-                0.87,
-                "f",
-                fontweight="bold",
-                fontsize=9,
-                zorder=10,
-                transform=ax0.transAxes,
-            )
-            ax1.text(
-                0.023,
-                0.87,
-                "l",
-                fontweight="bold",
-                fontsize=9,
-                backgroundcolor="white",
-                zorder=10,
-                transform=ax1.transAxes,
-            )
-
-    fig.subplots_adjust(
-        hspace=0.0, wspace=0.20, bottom=0.042, left=0.08, right=0.890, top=0.985
-    )
-
-    ## -- saving --
+    # we save the figure
     savefile = (
         localpath
         + "teaching_MESS/seismogram_"
@@ -339,5 +233,5 @@ for ii in range(6):
         + "-"
         + str(fmax)
     )
-    #plt.savefig(savefile + ".png", format="png", dpi=500)
+    plt.savefig(savefile + ".png", format="png", dpi=500)
     plt.show()
