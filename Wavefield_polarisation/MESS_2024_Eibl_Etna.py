@@ -28,104 +28,7 @@ vmin = 2 * 10**-17
 vmax = 3.0 * 10**-16
 log = False
 
-for ii in range(6):
-    if ii == 0:  # VT
-        # Please use 'UTCDateTime' to set tstart to 15:52:0 on 4 September 2019.
-        tstart = UTCDateTime(2019, 9, 4, 15, 52, 0)
-        tend = UTCDateTime(2019, 9, 4, 15, 54, 0)
-        julday = 247
-    elif ii == 1:  # VT
-        # 2019-09-17T18:40:52.400000Z  17-09 18:40:52  3.1 ML  37.735  14.873  4.1  0.2 km SE from Monte Minardo (CT)  260
-        tstart = UTCDateTime(2019, 9, 17, 18, 40, 30)
-        tend = UTCDateTime(2019, 9, 17, 18, 42, 30)
-        julday = 260
-    elif ii == 2:  # LP
-        # Please use 'UTCDateTime' to set tstart to 14:21:0 on 27 August 2019.
-        tstart = UTCDateTime(2019, 8, 27, 14, 21, 0)
-        tend = UTCDateTime(2019, 8, 27, 14, 22, 30)
-        julday = 239
-    elif ii == 3:  # LP
-        tstart = UTCDateTime(2019, 8, 27, 12, 18, 0)
-        tend = UTCDateTime(2019, 8, 27, 12, 19, 30)
-        julday = 239
-    elif ii == 4:  # tremor
-        # Please use 'UTCDateTime' to set tstart to 12:18:0 on 8 September 2019.
-        tstart = UTCDateTime(2019, 9, 8, 12, 18, 0)
-        tend = UTCDateTime(2019, 9, 8, 12, 20, 0)
-        julday = 251
-    elif ii == 5:  # tremor
-        tstart = UTCDateTime(2019, 9, 9, 12, 18, 0)
-        tend = UTCDateTime(2019, 9, 9, 12, 20, 0)
-        julday = 252
-
-    # we define a wider time window for the plotting
-    tstart_early = tstart - 1 * 30
-    tend_late = tend + 1 * 30
-
-    # we read in the seismometer data
-    fullpath = datapath + "ZR.RS1..HH*"
-    st_trans = read(fullpath, starttime=tstart_early, endtime=tend_late)
-
-    # we do further preprocessing of the seismometer data
-    print(st_trans)
-    st_trans.detrend("demean")
-    st_trans.detrend("linear")
-    st_trans.taper(max_percentage=0.01, type="cosine")
-    st_trans.taper(max_percentage=0.01, type="cosine")
-
-    # we remove the instrument response using a stationxml file
-    for tr in st_trans:
-        inv = read_inventory(datapath + "Stations_Etna_2019_seis.xml")
-        pre_filt = [prefilt[0], prefilt[1], prefilt[2], prefilt[3]]
-        tr.remove_response(inventory=inv, pre_filt=pre_filt, output="VEL")
-
-    # we do further preprocessing of the seismometer data
-    st_trans.detrend("demean")
-    st_trans.detrend("linear")
-    st_trans.taper(max_percentage=0.01, type="cosine")
-    st_trans.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
-    st_trans.trim(tstart, tend)
-    st_trans.sort()
-
-    # we read in the rotational sensor data
-    fullpath = datapath + "ZR.RS1..HJ*"
-    st_rot = read(fullpath, starttime=tstart, endtime=tend)
-
-    # we do further preprocessing 
-    print(st_rot)
-    st_rot.detrend("demean")
-    st_rot.detrend("linear")
-    st_rot.taper(max_percentage=0.01, type="cosine")
-    st_rot.taper(max_percentage=0.01, type="cosine")
-    st_rot.detrend("demean")
-    st_rot.detrend("linear")
-    st_rot.taper(max_percentage=0.01, type="cosine")
-    st_rot.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
-    st_rot.trim(tstart, tend)
-    st_rot.sort()
-
-    # we convert the rotational sensor rotation rate data from nanorad/s to rad/s, 
-    # the response is flat and no further instrument response removal is needed 
-    st_rot[0].data = st_rot[0].data * 1e-9
-    st_rot[1].data = st_rot[1].data * 1e-9
-    st_rot[2].data = st_rot[2].data * 1e-9
-
-    # we integrate to convert the rotational sensor data to rotation
-    st_rot.integrate()
-
-    # we merge seismometer and rotational sensor data into one stream object
-    st = st_trans + st_rot
-    siglen = int(np.floor(st_trans[0].stats.endtime - st_trans[0].stats.starttime))
-
-    # we initialise the figure
-    fig = plt.figure(figsize=(7.48, 8.48))
-    mpl.rcParams.update({"font.size": 8})
-    mpl.rcParams["pcolor.shading"]
-
-    # we derive the y axes limits 
-    trans_max = np.abs(st_trans[0].max())
-    rot_max = np.abs(st_rot[0].max())
-
+def plotting_6C(st, trans_max, rot_max):
     for i in range(6):
         ax0 = plt.subplot(6, 2, 1 + 2 * i)
         # please plot the seismograms. 
@@ -214,24 +117,109 @@ for ii in range(6):
             cb = plt.colorbar(img, cax=cbaxes, label="Spectral density ((rad)$^2$/Hz)")
 
     # we save the figure
-    savefile = (
-        localpath
-        + "seismogram_"
-        + str(tstart.year)
-        + "_"
-        + str(tstart.month)
-        + "_"
-        + str(tstart.day)
-        + "_h"
-        + str(tstart.hour)
-        + "-"
-        + str(tstart.minute)
-        + "-"
-        + str(tstart.second)
-        + "_f"
-        + str(fmin)
-        + "-"
-        + str(fmax)
-    )
-    plt.savefig(savefile + ".png", format="png", dpi=500)
+    plt.savefig(filename + ".png", format="png", dpi=500)
     plt.show()
+
+
+for ii in range(6):
+    if ii == 0:  # VT
+        # Please use 'UTCDateTime' to set tstart to 15:52:0 on 4 September 2019.
+        tstart = UTCDateTime(2019, 9, 4, 15, 52, 0)
+        tend = UTCDateTime(2019, 9, 4, 15, 54, 0)
+        julday = 247
+    elif ii == 1:  # VT
+        # 2019-09-17T18:40:52.400000Z  17-09 18:40:52  3.1 ML  37.735  14.873  4.1  0.2 km SE from Monte Minardo (CT)  260
+        tstart = UTCDateTime(2019, 9, 17, 18, 40, 30)
+        tend = UTCDateTime(2019, 9, 17, 18, 42, 30)
+        julday = 260
+    elif ii == 2:  # LP
+        # Please use 'UTCDateTime' to set tstart to 14:21:0 on 27 August 2019.
+        tstart = UTCDateTime(2019, 8, 27, 14, 21, 0)
+        tend = UTCDateTime(2019, 8, 27, 14, 22, 30)
+        julday = 239
+    elif ii == 3:  # LP
+        tstart = UTCDateTime(2019, 8, 27, 12, 18, 0)
+        tend = UTCDateTime(2019, 8, 27, 12, 19, 30)
+        julday = 239
+    elif ii == 4:  # tremor
+        # Please use 'UTCDateTime' to set tstart to 12:18:0 on 8 September 2019.
+        tstart = UTCDateTime(2019, 9, 8, 12, 18, 0)
+        tend = UTCDateTime(2019, 9, 8, 12, 20, 0)
+        julday = 251
+    elif ii == 5:  # tremor
+        tstart = UTCDateTime(2019, 9, 9, 12, 18, 0)
+        tend = UTCDateTime(2019, 9, 9, 12, 20, 0)
+        julday = 252
+    filename = f"{localpath}seismogram_{str(tstart.year)}_{str(tstart.month)}_{str(tstart.day)}_h{str(tstart.hour)}-{str(tstart.minute)}-{str(tstart.second)}_f{str(fmin)}-{str(fmax)}"
+
+    # we define a wider time window for the plotting
+    tstart_early = tstart - 1 * 30
+    tend_late = tend + 1 * 30
+
+    # we read in the seismometer data
+    fullpath = datapath + "ZR.RS1..HH*"
+    st_trans = read(fullpath, starttime=tstart_early, endtime=tend_late)
+
+    # we do further preprocessing of the seismometer data
+    print(st_trans)
+    st_trans.detrend("demean")
+    st_trans.detrend("linear")
+    st_trans.taper(max_percentage=0.01, type="cosine")
+    st_trans.taper(max_percentage=0.01, type="cosine")
+
+    # we remove the instrument response using a stationxml file
+    for tr in st_trans:
+        inv = read_inventory(datapath + "Stations_Etna_2019_seis.xml")
+        pre_filt = [prefilt[0], prefilt[1], prefilt[2], prefilt[3]]
+        tr.remove_response(inventory=inv, pre_filt=pre_filt, output="VEL")
+
+    # we do further preprocessing of the seismometer data
+    st_trans.detrend("demean")
+    st_trans.detrend("linear")
+    st_trans.taper(max_percentage=0.01, type="cosine")
+    st_trans.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
+    st_trans.trim(tstart, tend)
+    st_trans.sort()
+
+    # we read in the rotational sensor data
+    fullpath = datapath + "ZR.RS1..HJ*"
+    st_rot = read(fullpath, starttime=tstart, endtime=tend)
+
+    # we do further preprocessing 
+    print(st_rot)
+    st_rot.detrend("demean")
+    st_rot.detrend("linear")
+    st_rot.taper(max_percentage=0.01, type="cosine")
+    st_rot.taper(max_percentage=0.01, type="cosine")
+    st_rot.detrend("demean")
+    st_rot.detrend("linear")
+    st_rot.taper(max_percentage=0.01, type="cosine")
+    st_rot.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
+    st_rot.trim(tstart, tend)
+    st_rot.sort()
+
+    # we convert the rotational sensor rotation rate data from nanorad/s to rad/s, 
+    # the response is flat and no further instrument response removal is needed 
+    st_rot[0].data = st_rot[0].data * 1e-9
+    st_rot[1].data = st_rot[1].data * 1e-9
+    st_rot[2].data = st_rot[2].data * 1e-9
+
+    # we integrate to convert the rotational sensor data to rotation
+    st_rot.integrate()
+
+    # we merge seismometer and rotational sensor data into one stream object
+    st = st_trans + st_rot
+    siglen = int(np.floor(st_trans[0].stats.endtime - st_trans[0].stats.starttime))
+
+    # we initialise the figure
+    fig = plt.figure(figsize=(7.48, 8.48))
+    mpl.rcParams.update({"font.size": 8})
+    mpl.rcParams["pcolor.shading"]
+
+    # we derive the y axes limits 
+    trans_max = np.abs(st_trans[0].max())
+    rot_max = np.abs(st_rot[0].max())
+
+    plotting_6C(st, trans_max, rot_max)
+
+
