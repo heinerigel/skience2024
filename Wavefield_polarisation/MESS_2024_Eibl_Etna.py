@@ -209,7 +209,6 @@ for ii in range(6):
 
     # we merge seismometer and rotational sensor data into one stream object
     st = st_trans + st_rot
-    siglen = int(np.floor(st_trans[0].stats.endtime - st_trans[0].stats.starttime))
 
     # we initialise the figure
     fig = plt.figure(figsize=(7.48, 8.48))
