@@ -1,4 +1,4 @@
-# Based on Eibl, E. P. S., Rosskopf*, M., Sciotto, M., Currenti, G., Di Grazia, G., Jousset, P., Krüger, F., Weber, M. (2022) Performance of a Rotational Sensor to Decipher Volcano Seismic Signals on Etna, Italy, Journal of Geophysical Research: Solid Earth, 127, e2021JB023617. DOI: 10.1029/2021JB023617
+# Based on Eibl, E. P. S., Rosskopf, M., Sciotto, M., Currenti, G., Di Grazia, G., Jousset, P., Krüger, F., Weber, M. (2022) Performance of a Rotational Sensor to Decipher Volcano Seismic Signals on Etna, Italy, Journal of Geophysical Research: Solid Earth, 127, e2021JB023617. DOI: 10.1029/2021JB023617
 # author: Eva Eibl
 # 11/1/2024
 # ------------------------------------------------------------------------------
@@ -236,22 +236,25 @@ for ii in range(6):
         tend = tstart + 120
     elif ii == 1:  # VT
         # 2019-09-17T18:40:52.400000Z  17-09 18:40:52  3.1 ML  37.735  14.873  4.1  0.2 km SE from Monte Minardo (CT)  260
+        # Please use 'UTCDateTime' to set tstart to 18:40:30 on 17 September 2019.
         tstart = UTCDateTime(2019, 9, 17, 18, 40, 30)
-        tend = UTCDateTime(2019, 9, 17, 18, 42, 30)
+        tend = tstart + 120
     elif ii == 2:  # LP
         # Please use 'UTCDateTime' to set tstart to 14:21:0 on 27 August 2019.
         tstart = UTCDateTime(2019, 8, 27, 14, 21, 0)
-        tend = UTCDateTime(2019, 8, 27, 14, 22, 30)
+        tend = tstart + 90
     elif ii == 3:  # LP
+        # Please use 'UTCDateTime' to set tstart to 12:18:0 on 27 August 2019.
         tstart = UTCDateTime(2019, 8, 27, 12, 18, 0)
-        tend = UTCDateTime(2019, 8, 27, 12, 19, 30)
-    elif ii == 4:  # tremor
+        tend = tstart + 90
+    elif ii == 4:  # no tremor
         # Please use 'UTCDateTime' to set tstart to 12:18:0 on 8 September 2019.
         tstart = UTCDateTime(2019, 9, 8, 12, 18, 0)
-        tend = UTCDateTime(2019, 9, 8, 12, 20, 0)
+        tend = tstart + 120
     elif ii == 5:  # tremor
+        # Please use 'UTCDateTime' to set tstart to 12:18:0 on 9 September 2019.
         tstart = UTCDateTime(2019, 9, 9, 12, 18, 0)
-        tend = UTCDateTime(2019, 9, 9, 12, 20, 0)
+        tend = tstart + 120
 
     # we read the data
     st, trans_max, rot_max, filename = read_data(tstart, tend, fmin, fmax)

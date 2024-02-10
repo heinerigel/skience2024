@@ -36,20 +36,8 @@ dimension = "2D"
 fig = plt.figure(figsize=(7.48, 1.2 * 7.48))
 mpl.rcParams.update({"font.size": 9})
 
-
-def animate(frame):
-    plt.clf()
-    ii = frame
-
-    # Please use 'UTCDateTime' to set tstart to 0:10:55.2 on 10 June 2018. Note that tstart should increase by 1 s in each iteration.  
-    tstart = UTCDateTime(2018, 6, 10, 0, 10, 55.2) + ii * 1
-
-    # Please define the endtime so that the time window is 1 s long.
-    tend = tstart + 1
-
-    # we define a wider time window for the plotting
-    tstart_early = tstart - 1 * 30
-    tend_late = tend + 1 * 30
+# We read in seismic data
+def read_data(tstart, tend, fmin, fmax):
 
     # Please read in the seismic data using the 'read' function 
     st = read(filename, starttime=tstart_early, endtime=tend_late)
@@ -78,6 +66,24 @@ def animate(frame):
     st.trim(tstart, tend)
     st.sort()
 
+
+
+def animate(frame):
+    plt.clf()
+    ii = frame
+
+    # Please use 'UTCDateTime' to set tstart to 0:10:55.2 on 10 June 2018. Note that tstart should increase by 1 s in each iteration.  
+    tstart = UTCDateTime(2018, 6, 10, 0, 10, 55.2) + ii * 1
+
+    # Please define the endtime so that the time window is 1 s long.
+    tend = tstart + 1
+
+    # we define a wider time window for the plotting
+    tstart_early = tstart - 1 * 30
+    tend_late = tend + 1 * 30
+
+    st = read_data(tstart, tend, fmin, fmax)
+    
     if dimension == "2D":
         # we plot the waveforms
         ax0 = plt.subplot(4, 1, 1)
