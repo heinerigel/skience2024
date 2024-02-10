@@ -30,16 +30,15 @@ prefilt = [0.05, 0.06, 170, 175]
 fmin = 2
 fmax = 9
 ampl_lim = 0.0000013
-dimension = "2D"
+dimension = "3D"
+# End first cell
 
-# we initialise the figure
-fig = plt.figure(figsize=(7.48, 1.2 * 7.48))
-mpl.rcParams.update({"font.size": 9})
 
+# Start second cell
 # We read in seismic data
-def read_data(tstart, tend, fmin, fmax):
+def read_data(tstart, tend, tstart_early, tend_late, fmin, fmax):
 
-    # Please read in the seismic data using the 'read' function 
+    # We read in the seismic data 
     st = read(filename, starttime=tstart_early, endtime=tend_late)
 
     # we do further preprocessing 
@@ -61,34 +60,135 @@ def read_data(tstart, tend, fmin, fmax):
     st.taper(max_percentage=0.01, type="cosine")
     st.filter("bandpass", freqmin=fmin, freqmax=fmax, corners=2, zerophase=True)
 
-    # we save a copy of the not trimmed data for plotting
+    # We save a copy of the not trimmed data for plotting
     st_notrim = st.copy()
     st.trim(tstart, tend)
     st.sort()
 
+    return st, st_notrim
+# End second cell
 
+
+# please plot a seismogram of the trimmed and not trimmed data 
+# Step 1: Plot the data of one component. We want to use the 'matplotlib' date 
+# format from 'obspy.core.trace.Trace.times' for the time axes.
+# Start third cell
+# Step 2: set the starttime tstart to 0:10:55.2 on 10 June 2018
+# Step 3: call the function that reads the data
+# Step 4: Call the function that plots the data
+def plot_seismogram(axis, trace, trace_notrim):
+    axis.plot(trace_notrim.times("matplotlib"), trace_notrim, "grey", lw=0.7)
+    axis.plot(trace.times("matplotlib"), trace, "k", lw=0.8)
+
+tstart = UTCDateTime(2018, 6, 10, 0, 10, 55.2)
+tend = tstart + 1
+tstart_early = tstart - 1 * 30
+tend_late = tend + 1 * 30
+
+stream, stream_notrim = read_data(tstart, tend, tstart_early, tend_late, fmin, fmax)
+
+fig, axis = plt.subplots()
+plot_seismogram(axis, stream[0], stream_notrim[0])
+#plt.show()
+plt.close()
+# End third cell
+
+
+# Start fourth cell
+# Step 1: please write a function that plots one trace against another (2D).
+# Step 2: define the axes of your plot
+# Step 3: plot the particle motion of E against N, Z against N and E against Z
+def plot_particle_motion_2D(axis, trace1, trace2):
+    # we plot one trace against the other
+    axis.plot(trace1, trace2, "0.3", lw=0.4)
+
+    # we label the axes 
+    axis.set_xlabel(trace1.stats.channel)
+    axis.set_ylabel(trace2.stats.channel)
+
+    # we mark the startpoint of the ground motion
+    axis.plot(trace1[0], trace2[0], "k*", ms=8)
+
+ax1 = plt.subplot(1, 3, 1)
+ax2 = plt.subplot(1, 3, 2)
+ax3 = plt.subplot(1, 3, 3)
+
+plot_particle_motion_2D(ax1, stream[0], stream[1])
+plot_particle_motion_2D(ax2, stream[2], stream[1])
+plot_particle_motion_2D(ax3, stream[0], stream[2])
+#plt.show()
+plt.close()
+# End fourth cell
+
+
+# Start fifth cell
+# Step 1: please write a function that plots three traces against each other (3D)
+# at a station location in space.
+# Hint: use e.g. the Easting of a certain station location and 
+#       add the ground motion recorded on the E component to it 
+#       (please multiply the ground motion by 10**7 to make it visible) 
+def plot_particle_motion_3D(axis, stream, Easting, Northing, depthstat):
+    axis.plot(
+            Easting + np.array(stream[0]) * 10**7,
+            Northing + np.array(stream[1]) * 10**7,
+            depthstat + np.array(stream[2]) * 10**7,
+            "0.3",
+            lw=0.4,
+        )
+    # we mark the startpoint of the ground motion
+    axis.plot(
+        [Easting + stream[0][0] * 10**7],
+        [Northing + stream[1][0] * 10**7],
+        [depthstat + stream[2][0] * 10**7],
+        "k*",
+        ms=4,
+    )
+    # we mark and label the stations
+    axis.plot([Easting], [Northing], [depthstat], "k^", markersize=6)
+    axis.text(
+        Easting + 1,
+        Northing + 1,
+        depthstat,
+        stream[1].stats.station,
+    )
+
+    axis.set_ylabel("Northing (m)")
+    axis.set_xlabel("Easting (m)")
+    axis.set_zlabel("Height (m)")
+
+
+ax = plt.gca(projection="3d")
+plot_particle_motion_3D(ax, stream.select(station = statlist[0]), Easting[0], Northing[0], depthstat[0])
+plt.show()
+plt.close()
+# End fifth cell
+
+
+
+# we initialise the full figure
+fig = plt.figure(figsize=(7.48, 1.2 * 7.48))
+mpl.rcParams.update({"font.size": 9})
 
 def animate(frame):
     plt.clf()
     ii = frame
 
-    # Please use 'UTCDateTime' to set tstart to 0:10:55.2 on 10 June 2018. Note that tstart should increase by 1 s in each iteration.  
+    # we use 'UTCDateTime' to set tstart to 0:10:55.2 on 10 June 2018. Note that tstart increases by 1 s in each iteration.  
     tstart = UTCDateTime(2018, 6, 10, 0, 10, 55.2) + ii * 1
 
-    # Please define the endtime so that the time window is 1 s long.
+    # we define the endtime so that the time window is 1 s long.
     tend = tstart + 1
 
     # we define a wider time window for the plotting
     tstart_early = tstart - 1 * 30
     tend_late = tend + 1 * 30
 
-    st = read_data(tstart, tend, fmin, fmax)
-    
+    st, st_notrim = read_data(tstart, tend, tstart_early, tend_late, fmin, fmax)
+
     if dimension == "2D":
         # we plot the waveforms
         ax0 = plt.subplot(4, 1, 1)
-        ax0.plot(st_notrim[0].times("matplotlib"), st_notrim[0], "grey", lw=0.7)
-        ax0.plot(st[0].times("matplotlib"), st[0], "k", lw=0.8)
+        plot_seismogram(ax0, st[0], st_notrim[0])
         plt.gca().xaxis.set_major_formatter(mdates.DateFormatter("%H:%M:%S"))
         plt.gca().xaxis.set_major_locator(mdates.SecondLocator(interval=10))
 
@@ -99,31 +199,14 @@ def animate(frame):
             ax2 = plt.subplot(4, 3, 3 * i + 5)
             ax3 = plt.subplot(4, 3, 3 * i + 6)
 
-            # please plot the E component (x) against the N component (y)
-            ax1.plot(st[3 * i + 0], st[3 * i + 1], "0.3", lw=0.4)
+            # we plot the E component (x) against the N component (y)
+            plot_particle_motion_2D(ax1, st[3 * i + 0], st[3 * i + 1])
 
-            # we label the axes 
-            ax1.set_xlabel("E")
-            ax1.set_ylabel("N")
+            # we plot the Z component (x) against the N component (y)
+            plot_particle_motion_2D(ax2, st[3 * i + 2], st[3 * i + 1])
 
-            # please plot the Z component (x) against the N component (y)
-            ax2.plot(st[3 * i + 2], st[3 * i + 1], "0.3", lw=0.4)
-
-            # we label the axes 
-            ax2.set_xlabel("Z")
-            ax2.set_ylabel("N")
-
-            # please plot the E component (x) against the Z component (y)
-            ax3.plot(st[3 * i + 0], st[3 * i + 2], "0.3", lw=0.4)
-
-            # we label the axes 
-            ax3.set_xlabel("E")
-            ax3.set_ylabel("Z")
-
-            # we mark the startpoint of the ground motion
-            ax1.plot(st[3 * i + 0][0], st[3 * i + 1][0], "k*", ms=8)
-            ax2.plot(st[3 * i + 2][0], st[3 * i + 1][0], "k*", ms=8)
-            ax3.plot(st[3 * i + 0][0], st[3 * i + 2][0], "k*", ms=8)
+            # we plot the E component (x) against the Z component (y)
+            plot_particle_motion_2D(ax3, st[3 * i + 0], st[3 * i + 2])
 
             # we do some axes formatting
             ax1.yaxis.get_major_formatter().set_powerlimits([-2, 2])
@@ -161,38 +244,11 @@ def animate(frame):
             "Start: {}, End: {}".format(st[0].stats.starttime, st[0].stats.endtime)
         )
         for i in range(len(statlist)):
-            # please plot the particle motion in 3D at the station locations in space
-            # Hint: use e.g. the Easting of a certain station location and 
-            #       add the ground motion recorded on the E component to it 
-            #       (please multiply the ground motion by 10**7 to make it visible) 
-            ax4.plot(
-                Easting[i] + np.array(st[3 * i + 0]) * 10**7,
-                Northing[i] + np.array(st[3 * i + 1]) * 10**7,
-                depthstat[i] + np.array(st[3 * i + 2]) * 10**7,
-                "0.3",
-                lw=0.4,
-            )
+            # we plot the particle motion in 3D
+            plot_particle_motion_3D(ax4, st.select(station = statlist[i]), Easting[i], Northing[i], depthstat[i])
 
-            # we mark the startpoint of the ground motion
-            ax4.plot(
-                [Easting[i] + st[3 * i + 0][0] * 10**7],
-                [Northing[i] + st[3 * i + 1][0] * 10**7],
-                [depthstat[i] + st[3 * i + 2][0] * 10**7],
-                "k*",
-                ms=4,
-            )
-
-            # please plot the conduit of Strokkur in 3D
+            # we plot the conduit of Strokkur in 3D
             ax4.plot(Strokkurlon, Strokkurlat, Strokkurdep, "b--")
-
-            # we mark and label the stations
-            ax4.plot([Easting[i]], [Northing[i]], [depthstat[i]], "k^", markersize=6)
-            ax4.text(
-                Easting[i] + 1,
-                Northing[i] + 1,
-                depthstat[i],
-                st[3 * i + 1].stats.station,
-            )
 
             # we format and label the axes
             ax4.yaxis.get_major_formatter().set_powerlimits([-2, 2])
