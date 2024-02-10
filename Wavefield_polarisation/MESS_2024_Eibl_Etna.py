@@ -108,7 +108,7 @@ def read_data(tstart, tend, fmin, fmax):
 # Step 4: Call the function
 # Start third cell
 def plot_seismogram(axis, trace):
-    axis.plot(trace.times("matplotlib"), trace.data, "k", lw=0.4)  # Implement
+    axis.plot(trace.times("matplotlib"), trace.data, "k", lw=0.4)
 
 tstart = UTCDateTime(2019, 9, 4, 15, 52, 0)
 tend = UTCDateTime(2019, 9, 4, 15, 54, 0)
