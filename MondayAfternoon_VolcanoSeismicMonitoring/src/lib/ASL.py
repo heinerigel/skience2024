@@ -1,3 +1,4 @@
+import os
 import pygmt
 import numpy as np
 import pandas as pd
@@ -24,7 +25,112 @@ def inventory2seedids(inv, chancode='', force_location_code='*'):
     
     return seed_ids
 
-def montserrat_topo_map(show=False, zoom_level=0, inv=None, add_labels=False, centerlon=-62.177, centerlat=16.711, contour_interval=100, topo_color=True):
+def montserrat_topo_map(show=False, zoom_level=0, inv=None, add_labels=False, centerlon=-62.177, centerlat=16.711, contour_interval=100, topo_color=True, resolution='03s'):
+
+    #define etopo data file
+    # topo_data = 'path_to_local_data_file'
+    #topo_data = '@earth_relief_30s' #30 arc second global relief (SRTM15+V2.1 @ 1.0 km)
+    #topo_data = '@earth_relief_15s' #15 arc second global relief (SRTM15+V2.1)
+    #topo_data = '@earth_relief_03s' #3 arc second global relief (SRTM3S)
+    pklfile = f'{centerlon}.{centerlat}.{zoom_level}.{resolution}.pkl'
+    
+    # define plot geographical range
+    diffdeglat = 0.08/(2**zoom_level)
+    diffdeglon = diffdeglat/np.cos(np.deg2rad(centerlat))
+    minlon, maxlon = centerlon-diffdeglon, centerlon+diffdeglon  #-62.25, -62.13
+    minlat, maxlat = centerlat-diffdeglat, centerlat+diffdeglat  # 16.66, 16.83
+    print(minlon, maxlon, minlat, maxlat)
+
+
+    if os.path.exists(pklfile):
+        with open(pklfile, 'rb') as fileptr:
+            print(f'Loading {pklfile}')
+            topo_data = pickle.load(fileptr)    
+    else:        
+        try:
+            print('Reading topo (earth relief) data from GMT website')
+            ergrid = pygmt.datasets.load_earth_relief(resolution=resolution, region=[minlon, maxlon, minlat, maxlat], registration=None)
+            print("topo_data downloaded")
+            with open(pklfile, 'wb') as fileptr: 
+                print(f'Writing {pklfile}')
+                # A new file will be created 
+                pickle.dump(ergrid, fileptr)
+        except:
+            print("Cannot load any topo data")
+            return None
+
+    #print(ergrid)
+    
+    # Visualization
+    fig = pygmt.Figure()
+    
+    if topo_color:
+        # make color pallets
+        print('Making color pallet')
+        pygmt.makecpt(
+            cmap='topo',
+            series='-1300/1300/%d' % contour_interval,
+            continuous=True
+        )
+        print('Calling grdimage')
+        # plot high res topography
+        fig.grdimage(
+            grid=ergrid,
+            region=[minlon, maxlon, minlat, maxlat],
+            projection='M4i',
+            shading=True,
+            frame=True
+            )
+    
+    # plot continents, shorelines, rivers, and borders
+    fig.coast(
+        region=[minlon, maxlon, minlat, maxlat],
+        projection='M4i',
+        shorelines=True,
+        frame=True
+        )
+    
+    # plot the topographic contour lines
+    fig.grdcontour(
+        grid=ergrid,
+        interval=contour_interval,
+        annotation="%d+f6p" % contour_interval,
+        limit="-1300/1300", #to only display it below 
+        pen="a0.15p"
+        )
+    
+    if topo_color:
+        fig.colorbar(
+            frame='+l"Topography"',
+        #     position="x11.5c/6.6c+w6c+jTC+v" #for vertical colorbar
+            )
+
+    
+    if inv:
+        seed_ids = inventory2seedids(inv, force_location_code='')
+        #print(seed_ids)
+        stalat = [inv.get_coordinates(seed_id)['latitude'] for seed_id in seed_ids]
+        stalon = [inv.get_coordinates(seed_id)['longitude'] for seed_id in seed_ids]
+        fig.plot(x=stalon, y=stalat, style="s0.4c", fill="dodgerblue4", pen='2p,blue')  
+        
+        if add_labels:
+            #print('Adding station labels')
+            for thislat, thislon, this_id in zip(stalat, stalon, seed_ids):
+                net, sta, loc, chan = this_id.split('.')
+                #print(thislat, thislon, net, sta, loc, chan)
+                fig.text(x=thislon, y=thislat, text=sta, textfiles=None, \
+                        font="blue",
+                        justify="ML",
+                        offset="0.2c/0c",)
+    
+    if show:
+        fig.show();
+
+
+    return fig
+
+
+def montserrat_topo_map_old(show=False, zoom_level=0, inv=None, add_labels=False, centerlon=-62.177, centerlat=16.711, contour_interval=100, topo_color=True):
     #define etopo data file
     # topo_data = 'path_to_local_data_file'
     #topo_data = '@earth_relief_30s' #30 arc second global relief (SRTM15+V2.1 @ 1.0 km)
