@@ -89,11 +89,16 @@ class VolcanoSeismicCatalog(Catalog):
         self.triggers.extend(other.triggers)
         self.streams.extend(other.streams)
 
-    def write_events(self, xmlfile):
-        self.write(xmlfile, format="QUAKEML")  
+    def write_events(self, xmlfile=None):
+        if xmlfile:
+            self.write(xmlfile, format="QUAKEML")  
         times = self.get_times()
-        for i, st in enumerate(streams):
+        for i, st in enumerate(self.streams):
             mseedfile = times[i].strftime('%Y%m%dT%H%M%S.mseed')
+            if not xmlfile:
+                qmlfile = mseedfile.replace('.mseed','.xml')
+                self.events[i].write(qmlfile, format='QUAKEML')
+            print(f'Writing {mseedfile}')
             st.write(mseedfile, format='mseed')
 
 def triggers2volcanoseismiccatalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_secs, max_secs, stream=None, pretrig=None, posttrig=None ):
@@ -122,7 +127,46 @@ def triggers2volcanoseismiccatalog(trig, triggerMethod, threshON, threshOFF, sta
         cat.addEvent(thistrig, this_st, this_event)
         
     return cat
-        
+
+def plot_eventrate():
+	# if we loaded some events, create plots
+    dictorigin['id'] = origin_id
+	dictorigin['ml'] = origin_ml
+	dictorigin['time'] = mpl.dates.epoch2num(origin_epoch)
+	if numevents > 0:
+
+		###### PLOT DATA HERE 
+
+		# Let matplotlib automatically decide where to put date (x-axis) tick marks, and what style of labels to use
+		locator = mpl.dates.AutoDateLocator()
+		formatter = mpl.dates.AutoDateFormatter(locator)
+
+		# create the figure canvas
+		fig1 = plt.figure()
+
+		# add subplot - ml versus time
+		ax1 = fig1.add_subplot(311)
+		modgiseis.plot_time_ml(ax1, dictorigin, locator, formatter, snum, enum)
+
+		if numevents > 1:
+
+			# Compute bin_edges based on the first and last event times
+			bin_edges, snum, enum = modgiseis.compute_bins(dictorigin, snum, enum)
+	
+			# add subplot - counts versus time
+			ax2 = fig1.add_subplot(312)
+			modgiseis.plot_counts(ax2, dictorigin, locator, formatter, bin_edges, snum, enum)
+		
+			# add subplot - energy versus time
+			ax3 = fig1.add_subplot(313)
+			modgiseis.plot_energy(ax3, dictorigin, locator, formatter, bin_edges, snum, enum)
+
+		####### SAVE FIGURE
+
+		# save the figure to outfile
+		print "- saving to " + outfile
+		fig1.savefig(outfile)
+
 def real_time_optimization(band='all'):
     corners = 2
     if band=='VT':
