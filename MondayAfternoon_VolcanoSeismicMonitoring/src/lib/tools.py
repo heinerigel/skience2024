@@ -1,3 +1,4 @@
+import pickle
 from pathlib import Path
 from obspy import UTCDateTime
 from obspy.core.event import Event, Catalog, Origin
@@ -7,6 +8,7 @@ from obspy.core.event.magnitude import Magnitude, StationMagnitude
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+SECS_PER_DAY = 86400
 
 def tree(dir_path: Path, prefix: str=''):
     """A recursive generator, given a directory Path object
@@ -38,6 +40,7 @@ class VolcanoSeismicCatalog(Catalog):
                  pretrig=None, posttrig=None, **kwargs):
         self.streams = []
         self.triggers = []
+        self.miniseedfiles = []
         if not events:
             self.events = []
         else:
@@ -76,7 +79,7 @@ class VolcanoSeismicCatalog(Catalog):
             print('\nEVENT NUMBER: ',f'{i+1}', 'time: ', f'{st[0].stats.starttime}', '\n')
             st.plot(equal_scale=False)
             
-    def plot_eventrate(self):
+    def plot_eventrate(self, binsize=pd.Timedelta(days=1)):
         times = self.get_times()
         counts = np.cumsum(np.ones(len(times)))
         times.insert(0, self.starttime) 
@@ -86,36 +89,90 @@ class VolcanoSeismicCatalog(Catalog):
         plt.figure()
         plt.plot([t.datetime for t in times], counts)
 
-        df = time_mag_dataframe()
-        plot_eventrate(df)
+        df = self.to_catalog_dataframe()
+        dfcounts = df.set_index('time').resample(binsize).sum() 
+        print(dfcounts)
+        dfcounts['cumsum'] = dfcounts['sum'].cumsum()
+        print(dfcounts)
+        dfenergy = df.set_index('time').resample(binsize)['energy'].sum()
+        print(dfenergy)
+        dfenergy['cumsum'] = dfenergy['energy'].cumsum()
+        print(dfenergy)
+        numevents = len(df)
+        if numevents > 0:
+            fig1 = plt.figure()
+            
+            # add subplot - counts versus time
+            ax1 = fig1.add_subplot(211)
+            plot_counts(ax1, dfcounts, stime, etime)
+            
+            # add subplot - energy versus time
+            ax2 = fig1.add_subplot(212)
+            plot_energy(ax2, dfenergy, stime, etime)
 
+
+    
     def concat(self, other):
         self.events.extend(other.events)
         self.triggers.extend(other.triggers)
         self.streams.extend(other.streams)
 
-    def write_events(self, xmlfile=None):
+    def write_events(self, outdir, xmlfile=None):
         if xmlfile:
-            self.write(xmlfile, format="QUAKEML")  
+            self.write(os.path.join(outdir, xmlfile), format="QUAKEML")  
         times = self.get_times()
         for i, st in enumerate(self.streams):
-            mseedfile = times[i].strftime('%Y%m%dT%H%M%S.mseed')
+            mseedfile = os.path.join(outdir, times[i].strftime('%Y%m%dT%H%M%S.mseed'))
+            self.miniseedfiles.append(mseedfile)
             if not xmlfile:
                 qmlfile = mseedfile.replace('.mseed','.xml')
                 self.events[i].write(qmlfile, format='QUAKEML')
             print(f'Writing {mseedfile}')
             st.write(mseedfile, format='mseed')
 
-    def time_mag_dataframe(self):
+    def to_catalog_dataframe(self):
         times = [t.datetime for t in self.get_times()]
-        for ev in self.events:
+        magnitudes = []
+        lats = []
+        longs = []
+        depths = []
+        for eventObj in self.events:
             magnitudes.append(ev.magnitudes[0]['mag'])
+            if len(eventObj.origins)>0:
+                orObj = eventObj.origins[0]
+                lats.append(orObj.latitude)
+                longs.append(orObj.longitude)
+                depths.append(orObj.depth)
+            else:
+                lats.append(None)
+                longs.append(None)
+                depths.append(None)
         df = pd.DataFrame()
         df['time'] = times
         df['mag'] = pd.Series(magnitudes)
+        df['energy'] = pd.Series([mag2eng(m) for m in magnitudes])
+        df['latitude'] = pd.Series(lats)
+        df['longitude'] = pd.Series(longs)
+        df['depth'] = pd.Series(depths)
         return df
+  
+    def save(self, pklfile):
+        with open(pklfile, 'wb') as fileptr: 
+            print(f'Writing {pklfile}')
+            # A new file will be created 
+            pickle.dump(ergrid, fileptr)
 
-def triggers2volcanoseismiccatalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_secs, max_secs, stream=None, pretrig=None, posttrig=None ):
+def load_catalog(pklfile):
+    if os.path.exists(pklfile):
+        print(f'Loading {pklfile}')
+        with open(pklfile, 'rb') as fileptr:
+            cat = pickle.load(fileptr)  
+        return cat
+    else:
+        print(pklfile, ' not found')
+        return None
+
+def triggers2catalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_secs, max_secs, stream=None, pretrig=None, posttrig=None ):
     if stream:
         cat = VolcanoSeismicCatalog(triggerMethod=None, threshON=threshON, threshOFF=threshOFF, \
                        sta=sta_secs, lta=lta_secs, max_secs=max_secs, \
@@ -154,40 +211,19 @@ def triggers2volcanoseismiccatalog(trig, triggerMethod, threshON, threshOFF, sta
 
 def plot_time_mag(df, ax=None):
     if not ax:
-    	fig1 = plt.figure()
-    	ax = fig1.add_subplot(111)    
-	time = dictorigin['time']
-	ml = dictorigin['ml']
-    df.plot(ax=ax, x='time', y='mag', linestyle='o', markerfacecolor='None')
-	ax.grid(True)
-	ax.set_ylabel('magnitude', fontsize=8)
+        fig1 = plt.figure()
+        ax = fig1.add_subplot(111)    
+    df.plot(ax=ax, x='time', y='mag', kind='scatter', style='o', xlabel='Time', ylabel='magnitude', rot=90)
+    ax.grid(True)
 
-def plot_eventrate(df):
-    numevents = len(df)
-	if numevents > 0:
-		fig1 = plt.figure()
 
-        # Compute bin_edges based on the first and last event times
-        bin_edges, stime, etime = compute_bins(df['time'], stime, etime)
-
-        # add subplot - counts versus time
-        ax1 = fig1.add_subplot(211)
-        plot_counts(ax1, df, bin_edges, stime, etime)
-    
-        # add subplot - energy versus time
-        ax2 = fig1.add_subplot(212)
-        plot_energy(ax2, df, bin_edges, stime, etime)
-
-def plot_counts(ax, dictorigin, x_locator, x_formatter, bin_edges_in, snum, enum):
-	# compute all data needed
-    time = dictorigin['time']
-    cumcounts = np.arange(1,np.alen(time)+1)
-	if len(bin_edges_in) < 2:
-		return
-	binsize = bin_edges_in[1]-bin_edges_in[0]
-	binsize_str = binsizelabel(binsize)
+def plot_counts(ax, df, stime, etime):
+	#binsize = df['time'][1] - df['time'][0]
+	#binsize_str = binsizelabel(binsize / SECS_PER_DAY)
 
   	# plot 
+    df.plot.bar()
+    '''
 	counts, bin_edges_out, patches = ax.hist(time, bin_edges_in, cumulative=False, histtype='bar', color='black', edgecolor=None)
     ax.grid(True)
     ax.xaxis_date()
@@ -210,9 +246,11 @@ def plot_counts(ax, dictorigin, x_locator, x_formatter, bin_edges_in, snum, enum
 	if snum and enum:
         	ax2.set_xlim(snum, enum)
         return
+    '''
 
 def plot_energy(ax, dictorigin, x_locator, x_formatter, bin_edges, snum, enum):
 	# compute all data needed
+    '''
     time = dictorigin['time']
 	energy = ml2energy(dictorigin['ml'])
     cumenergy = np.cumsum(energy)
@@ -222,8 +260,11 @@ def plot_energy(ax, dictorigin, x_locator, x_formatter, bin_edges, snum, enum):
         barwidth = bin_edges[1:] - bin_edges[0:-1]
 	binsize = bin_edges[1]-bin_edges[0]
 	binsize_str = binsizelabel(binsize)
+    '''
 
 	# plot
+    df.plot.bar()
+    '''
     ax.bar(bin_edges[:-1], binned_energy, width=barwidth, color='black', edgecolor=None)
 
     # re-label the y-axis in terms of equivalent Ml rather than energy
@@ -268,39 +309,16 @@ def plot_energy(ax, dictorigin, x_locator, x_formatter, bin_edges, snum, enum):
     ax2.xaxis.set_major_formatter(x_formatter)
 	if snum and enum:
         ax2.set_xlim(snum, enum)
-'''
-def bin_counts(time, bin_edges_in):
-	# count the number of "events" in each bin 
-	# use this if want to produce counts (per bin) but not actually plot them!
-        counts, bin_edges_out = np.histogram(time, bin_edges_in)
-	return counts 
-'''
-def bin_irregular(time, y, bin_edges):
-	# bin y against time according to bin_edges (not for binning counts, since they don't have a y value)
-
-    # bin the data as for counts
-    counts_per_bin, bin_edges_out = np.histogram(time, bin_edges)
-    i_start = 0
-    i_end = -1
-    binned_y = np.empty(np.alen(counts_per_bin))
-
-    for binnum in range(np.alen(counts_per_bin)):
-        i_end += counts_per_bin[binnum]
-        if i_start <= i_end:
-            binned_y[binnum] = np.sum(y[i_start:i_end+1])
-        else:
-            binned_y[binnum] = 0
-        i_start = i_end + 1
-    return binned_y
-
-def ml2energy(ml):
+    '''
+        
+def mag2energy(mag):
 	energy = np.power(10, 1.5 * ml)
 	return energy
 
-def energy2ml(energy):
-	ml = np.log10(energy)/1.5
-	return ml
-
+def energy2mag(energy):
+	mag = np.log10(energy)/1.5
+	return mag
+    
 def real_time_optimization(band='all'):
     corners = 2
     if band=='VT':
@@ -330,7 +348,112 @@ def real_time_optimization(band='all'):
     threshOFF = threshOFF / threshON
         
     return sta_secs, lta_secs, threshON, threshOFF, freqmin, freqmax, corners
-            
+'''
+def bin_counts(time, bin_edges_in):
+	# count the number of "events" in each bin 
+	# use this if want to produce counts (per bin) but not actually plot them!
+        counts, bin_edges_out = np.histogram(time, bin_edges_in)
+	return counts 
+
+def bin_irregular(time, y, bin_edges):
+	# bin y against time according to bin_edges (not for binning counts, since they don't have a y value)
+
+    # bin the data as for counts
+    counts_per_bin, bin_edges_out = np.histogram(time, bin_edges)
+    i_start = 0
+    i_end = -1
+    binned_y = np.empty(np.alen(counts_per_bin))
+
+    for binnum in range(np.alen(counts_per_bin)):
+        i_end += counts_per_bin[binnum]
+        if i_start <= i_end:
+            binned_y[binnum] = np.sum(y[i_start:i_end+1])
+        else:
+            binned_y[binnum] = 0
+        i_start = i_end + 1
+    return binned_y
+def autobinsize(daysdiff):
+    # Try and keep to around 100 bins or less
+    if daysdiff <= 2.0/24:  # less than 2 hours of data, use a binsize of 1 minute
+        binsize = 1.0/1440
+    elif daysdiff <= 4.0:  # less than 4 days of data, use a binsize of 1 hour
+        binsize = 1.0/24
+    elif daysdiff <= 100.0:  # less than 100 days of data, use a binsize of 1 day
+        binsize = 1.0
+    elif daysdiff <= 700.0: # less than 700 days of data, use a binsize of 1 week
+        binsize = 7.0
+    elif daysdiff <= 365.26 * 23: # less than 23 years of data, use a binsize of (approx) 1 month
+        binsize = 365.26/12
+    else:
+        binsize = 365.26 # otherwise use a binsize of 1 year
+    return binsize
+
+def compute_bins(df, stime=None, etime=None, binsize=None):
+    # If stime and etime are provided, enum will be end of last bin UNLESS you ask for binsize=365.26, or 365.26/12
+    # in which case it will be end of year or month boundary
+    # If stime and etime not given, they will end at next boundary - and weeks end on Sat midnight/Sunday 00:00
+    # binsize is in days, not seconds
+    # First lets calculate the difference in time between the first and last events
+    if not stime:
+        stime = df['time'].min()
+        etime = df['time'].max()
+        daysdiff = (etime - stime)/SECS_PER_DAY
+
+    if not binsize:
+        binsize = autobinsize(daysdiff) 
+#
+        
+    # special cases
+    if binsize == 365.26/12:
+        # because a month isn't exactly 365.26/12 days, this is not going to be the month boundary
+        # so let us get the year and the month for snum, but throw away the day, hour, minute, second etc
+        thisyear = sdate.year
+        thismonth = sdate.month
+        sdate = obspy.UTCDateTime(thisyear, thismonth, 1)
+        bins = list()
+        bins.append(sdate)
+        count = 0
+        while bins[count] < etime + binsize * SECS_PER_DAY:
+            count += 1
+            thismonth += 1
+            if thismonth > 12: # datetime.datetime dies if sdate.month > 12
+                thisyear += 1
+                thismonth -= 12
+                monthdate = obspy.UTCDateTime(thisyear, thismonth, 1)
+                bins.append(monthdate)
+        bins = np.array(bins)
+        etime = np.max(bins)
+
+	elif binsize == 365.26: # binsize of 1 year
+                # because a year isn't exactly 365.26 days, this is not going to be the year boundary
+                # so let us get the year for snum, but throw away the month, day, hour, minute, second etc
+                sdate = mpl.dates.num2date(snum)
+                sdate = datetime.datetime(sdate.year, 1, 1, 0, 0, 0)
+                snum = mpl.dates.date2num(sdate)
+                bins = list()
+                bins.append(snum)
+                count = 0
+                while bins[count] < enum + binsize:
+                        count += 1
+                        yeardate = datetime.datetime(sdate.year + count, 1, 1, 0, 0, 0)
+                        bins.append(mpl.dates.date2num(yeardate))
+                bins = np.array(bins)
+                enum = np.max(bins)
+
+	else: # the usual case
+        	# roundoff the start and end times based on the binsize
+		if snum==None and enum==None:
+			print "snum and enum undefined - calculating"
+        		snum = floor(snum, binsize) # start time
+        		enum = ceil(enum, binsize) # end time
+        	#bins = np.arange(snum, enum+binsize, binsize)
+        	bins = np.arange(enum, snum-binsize, -binsize)
+		bins = bins[::-1]
+
+	print 'snum: %s' % datenum2datestr(snum)
+	print 'enum: %s' % datenum2datestr(enum)
+        return bins, snum, enum
+'''            
 if __name__ == "__main__":
     print('Tree listing of current directory')
     for line in tree(Path.cwd().joinpath('.')):
