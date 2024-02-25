@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import obspy
 from obspy.geodetics import locations2degrees, degrees2kilometers
 from SAM import DSAM
+import pickle
 
 def inventory2seedids(inv, chancode='', force_location_code='*'):
     seed_ids = list()
@@ -28,11 +29,11 @@ def inventory2seedids(inv, chancode='', force_location_code='*'):
 def montserrat_topo_map(show=False, zoom_level=0, inv=None, add_labels=False, centerlon=-62.177, centerlat=16.711, contour_interval=100, topo_color=True, resolution='03s'):
 
     #define etopo data file
-    # topo_data = 'path_to_local_data_file'
-    #topo_data = '@earth_relief_30s' #30 arc second global relief (SRTM15+V2.1 @ 1.0 km)
-    #topo_data = '@earth_relief_15s' #15 arc second global relief (SRTM15+V2.1)
-    #topo_data = '@earth_relief_03s' #3 arc second global relief (SRTM3S)
-    pklfile = f'{centerlon}.{centerlat}.{zoom_level}.{resolution}.pkl'
+    # ergrid = 'path_to_local_data_file'
+    #ergrid = '@earth_relief_30s' #30 arc second global relief (SRTM15+V2.1 @ 1.0 km)
+    #ergrid = '@earth_relief_15s' #15 arc second global relief (SRTM15+V2.1)
+    #ergrid = '@earth_relief_03s' #3 arc second global relief (SRTM3S)
+    pklfile = f'EarthReliefData{centerlon}.{centerlat}.{zoom_level}.{resolution}.pkl'
     
     # define plot geographical range
     diffdeglat = 0.08/(2**zoom_level)
@@ -43,14 +44,14 @@ def montserrat_topo_map(show=False, zoom_level=0, inv=None, add_labels=False, ce
 
 
     if os.path.exists(pklfile):
+        print(f'Loading {pklfile}')
         with open(pklfile, 'rb') as fileptr:
-            print(f'Loading {pklfile}')
-            topo_data = pickle.load(fileptr)    
+            ergrid = pickle.load(fileptr)    
     else:        
         try:
             print('Reading topo (earth relief) data from GMT website')
             ergrid = pygmt.datasets.load_earth_relief(resolution=resolution, region=[minlon, maxlon, minlat, maxlat], registration=None)
-            print("topo_data downloaded")
+            print("ergrid downloaded")
             with open(pklfile, 'wb') as fileptr: 
                 print(f'Writing {pklfile}')
                 # A new file will be created 
@@ -132,10 +133,10 @@ def montserrat_topo_map(show=False, zoom_level=0, inv=None, add_labels=False, ce
 
 def montserrat_topo_map_old(show=False, zoom_level=0, inv=None, add_labels=False, centerlon=-62.177, centerlat=16.711, contour_interval=100, topo_color=True):
     #define etopo data file
-    # topo_data = 'path_to_local_data_file'
-    #topo_data = '@earth_relief_30s' #30 arc second global relief (SRTM15+V2.1 @ 1.0 km)
-    # topo_data = '@earth_relief_15s' #15 arc second global relief (SRTM15+V2.1)
-    topo_data = '@earth_relief_03s' #3 arc second global relief (SRTM3S)
+    # ergrid = 'path_to_local_data_file'
+    #ergrid = '@earth_relief_30s' #30 arc second global relief (SRTM15+V2.1 @ 1.0 km)
+    # ergrid = '@earth_relief_15s' #15 arc second global relief (SRTM15+V2.1)
+    #nergrid = '@earth_relief_03s' #3 arc second global relief (SRTM3S)
     
     # define plot geographical range
     diffdeglat = 0.08/(2**zoom_level)
@@ -157,7 +158,7 @@ def montserrat_topo_map_old(show=False, zoom_level=0, inv=None, add_labels=False
 
         # plot high res topography
         fig.grdimage(
-            grid=topo_data,
+            grid=ergrid,
             region=[minlon, maxlon, minlat, maxlat],
             projection='M4i',
             shading=True,
@@ -174,7 +175,7 @@ def montserrat_topo_map_old(show=False, zoom_level=0, inv=None, add_labels=False
     
     # plot the topographic contour lines
     fig.grdcontour(
-        grid=topo_data,
+        grid=ergrid,
         interval=contour_interval,
         annotation="%d+f6p" % contour_interval,
         limit="-1300/1300", #to only display it below 
