@@ -1,4 +1,5 @@
 import pickle
+import os
 from pathlib import Path
 from obspy import UTCDateTime
 from obspy.core.event import Event, Catalog, Origin
@@ -78,39 +79,6 @@ class VolcanoSeismicCatalog(Catalog):
         for i,st in enumerate(self.streams):
             print('\nEVENT NUMBER: ',f'{i+1}', 'time: ', f'{st[0].stats.starttime}', '\n')
             st.plot(equal_scale=False)
-            
-    def plot_eventrate(self, binsize=pd.Timedelta(days=1)):
-        times = self.get_times()
-        counts = np.cumsum(np.ones(len(times)))
-        times.insert(0, self.starttime) 
-        times.append(self.endtime)
-        counts = np.insert(counts, 0, 0)
-        counts = np.append(counts, counts[-1])
-        plt.figure()
-        plt.plot([t.datetime for t in times], counts)
-
-        df = self.to_catalog_dataframe()
-        dfcounts = df.set_index('time').resample(binsize).sum() 
-        print(dfcounts)
-        dfcounts['cumsum'] = dfcounts['sum'].cumsum()
-        print(dfcounts)
-        dfenergy = df.set_index('time').resample(binsize)['energy'].sum()
-        print(dfenergy)
-        dfenergy['cumsum'] = dfenergy['energy'].cumsum()
-        print(dfenergy)
-        numevents = len(df)
-        if numevents > 0:
-            fig1 = plt.figure()
-            
-            # add subplot - counts versus time
-            ax1 = fig1.add_subplot(211)
-            plot_counts(ax1, dfcounts, stime, etime)
-            
-            # add subplot - energy versus time
-            ax2 = fig1.add_subplot(212)
-            plot_energy(ax2, dfenergy, stime, etime)
-
-
     
     def concat(self, other):
         self.events.extend(other.events)
@@ -130,14 +98,19 @@ class VolcanoSeismicCatalog(Catalog):
             print(f'Writing {mseedfile}')
             st.write(mseedfile, format='mseed')
 
-    def to_catalog_dataframe(self):
+    def catalog2dataframe(self):
         times = [t.datetime for t in self.get_times()]
+        pretrig = self.triggerParams['pretrig']
+        posttrig = self.triggerParams['posttrig']
+        #pretrigdt = [(t-pretrig).datetime for t in self.get_times()]
+        durations = [this_trig['duration'] for this_trig in self.triggers]
+        #posttrigdt = [(t-posttrig+d).datetime for t,d in zip(self.get_times(),durations) ]
         magnitudes = []
         lats = []
         longs = []
         depths = []
         for eventObj in self.events:
-            magnitudes.append(ev.magnitudes[0]['mag'])
+            magnitudes.append(eventObj.magnitudes[0]['mag'])
             if len(eventObj.origins)>0:
                 orObj = eventObj.origins[0]
                 lats.append(orObj.latitude)
@@ -147,21 +120,102 @@ class VolcanoSeismicCatalog(Catalog):
                 lats.append(None)
                 longs.append(None)
                 depths.append(None)
+        
         df = pd.DataFrame()
-        df['time'] = times
-        df['mag'] = pd.Series(magnitudes)
-        df['energy'] = pd.Series([mag2eng(m) for m in magnitudes])
+        df['datetime'] = times
+        df['magnitude'] = pd.Series(magnitudes)
+        df['energy'] = pd.Series([magnitude2energy(m) for m in magnitudes])
         df['latitude'] = pd.Series(lats)
         df['longitude'] = pd.Series(longs)
         df['depth'] = pd.Series(depths)
+        df['durations'] = pd.Series(durations)
+        #df['starttime'] = pd.Series(pretrigdt)
+        #df['endtime'] = pd.Series(posttrigdt)
+        df['filename'] = [t.strftime('%Y%m%dT%H%M%S') for t in self.get_times()]
         return df
-  
-    def save(self, pklfile):
-        with open(pklfile, 'wb') as fileptr: 
-            print(f'Writing {pklfile}')
-            # A new file will be created 
-            pickle.dump(ergrid, fileptr)
 
+    def save(self, outdir, outfile):
+        df = self.catalog2dataframe()
+        df.to_pickle(os.path.join(outdir, outfile))
+    '''    
+    def save(self, pklfile):
+        print(f'Writing {pklfile}')
+        try:
+            with open(pklfile, "wb") as f:
+                pickle.dump(self, fileptr, protocol=pickle.HIGHEST_PROTOCOL)
+        except Exception as ex:
+            print("Error during pickling object (Possibly unsupported):", ex)
+    '''
+            
+    def plot_eventrate(self, binsize=pd.Timedelta(days=1), time_limits=None):
+        # input times are obspy.UTCDateTime but all converted to datetime.datetime inside function
+        times = self.get_times()
+        if time_limits:
+            stime = time_limits[0].datetime
+            etime = time_limits[1].datetime
+        else:
+            stime = times[0].datetime
+            etime = times[-1].datetime
+        counts = np.cumsum(np.ones(len(times)))
+        #times.insert(0, self.starttime) 
+        #times.append(self.endtime)
+        #counts = np.insert(counts, 0, 0)
+        #counts = np.append(counts, counts[-1])
+        plt.figure()
+        plt.plot([t.datetime for t in times], counts)
+
+        #df = self.to_catalog_dataframe()
+        df = self.catalog2dataframe()
+        df['counts']=pd.Series([1 for i in range(len(df))])
+        dfsum = df.set_index('datetime').resample(binsize).sum() 
+        dfsum['cumcounts'] = dfsum['counts'].cumsum()
+        #dfsum.drop(labels=['mag'])
+        dfsum['cumenergy'] = dfsum['energy'].cumsum()
+        print(dfsum)
+        numevents = len(df)
+        if numevents > 0:
+            fig1 = plt.figure()
+            ax1 = fig1.add_subplot(311)
+            df.plot(ax=ax1, x='datetime', y='magnitude', kind='scatter', style='o', xlabel='Time', ylabel='magnitude', rot=90)
+            #plot_counts(ax1, dfsum, stime, etime)
+            #dfsum.plot.bar(ax=ax, y='counts', width=1)
+            ax2 = fig1.add_subplot(312)
+            dfsum.plot.line(ax=ax2, y='counts', style='b', ylabel='Counts')
+            dfsum.plot.line(ax=ax2, y='cumcounts', secondary_y=True, style='g', ylabel='Cumulative')
+            #ax.grid(True)
+            #ax2 = ax.twinx()
+            #p2, = ax2.plot(dfsum['time'],dfsum['cumcounts'],'g', lw=2.5)
+            #dfsum.plot.bar(ax=ax, y='cumcounts', width=1)
+            #dfsum.plot.line(ax=ax2, y='cumcounts', drawstyle='steps')
+            #dfsum.plot.line(ax=ax, y='cumcounts')#, drawstyle='steps')
+            #ax2.yaxis.get_label().set_color(p2.get_color())
+            #ytl_obj = plt.getp(ax2, 'yticklabels')  # get the properties for yticklabels
+            ##plt.getp(ytl_obj)                       # print out a list of properties
+            #plt.setp(ytl_obj, color="g")            # set the color of yticks to red
+            #plt.setp(plt.getp(ax2, 'yticklabels'), color='g') #xticklabels: same
+            #ax2.set_ylabel("Cumulative\n# Earthquakes", fontsize=8)
+            #ax2.xaxis.set_major_locator(x_locator)
+            
+            # add subplot - energy versus time
+            ax3 = fig1.add_subplot(313)
+            #ax3 = ax.twinx()
+            dfsum.plot.line(ax=ax3, y='energy', style='b', ylabel='Energy')
+            dfsum.plot.line(ax=ax3, y='cumenergy', secondary_y=True, style='g', ylabel='Cumulative')
+            #plot_energy(ax23, dfsum, stime, etime)
+
+# SCAFFOLD: need to reconstruct a catalog object from a dataframe
+def load_catalog_dataframe(pklfile):
+    cat = VolcanoSeismicCatalog(triggerMethod=None, threshON=threshON, threshOFF=threshOFF, \
+                       sta=sta_secs, lta=lta_secs, max_secs=max_secs, \
+                       pretrig=pretrig, posttrig=posttrig, starttime=stream[0].stats.starttime, endtime=stream[0].stats.endtime) 
+    if os.path.exists(pklfile):
+        print(f'Loading {pklfile}')
+        df = pd.read_pickle(pklfile, index_col=None)
+        return df
+    else:
+        print(pklfile, ' not found')
+        return None
+'''
 def load_catalog(pklfile):
     if os.path.exists(pklfile):
         print(f'Loading {pklfile}')
@@ -171,6 +225,7 @@ def load_catalog(pklfile):
     else:
         print(pklfile, ' not found')
         return None
+'''
 
 def triggers2catalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_secs, max_secs, stream=None, pretrig=None, posttrig=None ):
     if stream:
@@ -198,8 +253,8 @@ def triggers2catalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_sec
                 sta_mags.append(sta_mag)
                 stationmag_objects.append(StationMagnitude(mag=sta_mag, mag_type='M'))
             avg_mag = np.nanmean(sta_mags)
-            networkmag_object = Magnitude(mag=avg_map, mag_type='M')
-            magnitude_objects.append(networkmag_objects)
+            networkmag_object = Magnitude(mag=avg_mag, mag_type='M')
+            magnitude_objects.append(networkmag_object)
         else:
             this_st = None
         info = CreationInfo(author="coincidence_trigger", creation_time=UTCDateTime())
@@ -222,10 +277,12 @@ def plot_counts(ax, df, stime, etime):
 	#binsize_str = binsizelabel(binsize / SECS_PER_DAY)
 
   	# plot 
-    df.plot.bar()
+    df.plot.bar(ax=ax, y='counts', width=1)
+    ax.grid(True)
+    #ax.set_xlim(stime, etime)
     '''
 	counts, bin_edges_out, patches = ax.hist(time, bin_edges_in, cumulative=False, histtype='bar', color='black', edgecolor=None)
-    ax.grid(True)
+    
     ax.xaxis_date()
     plt.setp( ax.get_xticklabels(), rotation=90, horizontalalignment='center', fontsize=7 )
     ax.set_ylabel("# Earthquakes\n%s" % binsize_str, fontsize=8)
@@ -248,7 +305,7 @@ def plot_counts(ax, df, stime, etime):
         return
     '''
 
-def plot_energy(ax, dictorigin, x_locator, x_formatter, bin_edges, snum, enum):
+def plot_energy(ax, df, stime, etime):
 	# compute all data needed
     '''
     time = dictorigin['time']
@@ -263,7 +320,7 @@ def plot_energy(ax, dictorigin, x_locator, x_formatter, bin_edges, snum, enum):
     '''
 
 	# plot
-    df.plot.bar()
+    df.plot.bar(ax=ax, y='energy', width=1)
     '''
     ax.bar(bin_edges[:-1], binned_energy, width=barwidth, color='black', edgecolor=None)
 
@@ -311,11 +368,11 @@ def plot_energy(ax, dictorigin, x_locator, x_formatter, bin_edges, snum, enum):
         ax2.set_xlim(snum, enum)
     '''
         
-def mag2energy(mag):
-	energy = np.power(10, 1.5 * ml)
+def magnitude2energy(mag):
+	energy = np.power(10, 1.5 * mag)
 	return energy
 
-def energy2mag(energy):
+def energy2magnitude(energy):
 	mag = np.log10(energy)/1.5
 	return mag
     
