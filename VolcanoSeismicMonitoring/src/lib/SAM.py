@@ -529,8 +529,9 @@ class SAM:
             yyyy = obspy.core.UTCDateTime(starttime).year
             samfile = self.get_filename(SAM_DIR, id, yyyy, self.get_sampling_interval(df), ext)
             #samfile = os.path.join(SAM_DIR,'SAM_%s_%4d_%ds.%s' % (id, yyyy, self.get_sampling_interval(df), ext))
-
-            if os.path.isfile(samfile) and not overwrite:
+            print(samfile)
+            if os.path.isfile(samfile):# and not overwrite:
+            #if os.path.isfile(samfile) and not overwrite:
                 if ext=='csv':
                     original_df = pd.read_csv(samfile)
                 elif ext=='pickle':
@@ -540,6 +541,8 @@ class SAM:
                 combined_df = pd.concat([original_df, df], ignore_index=True)
                 combined_df = combined_df.drop_duplicates(subset=['time'], keep='last') # overwrite duplicate data
                 print(f'Modifying {samfile}')
+                #combined_df['datetime'] = [obspy.UTCDateTime(t).datetime for t in combined_df['time']]
+                #print(combined_df)                
                 if ext=='csv':
                     combined_df.to_csv(samfile, index=False)
                 elif ext=='pickle':
