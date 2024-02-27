@@ -575,7 +575,11 @@ class SAM:
     @staticmethod
     def get_sampling_interval(df):
         ''' return the sampling interval of an SAM dataframe in seconds '''
-        return df.iloc[1]['time'] - df.iloc[0]['time']       
+        if len(df)>1:
+            return df.iloc[1]['time'] - df.iloc[0]['time']  
+        else:
+            #print(obspy.UTCDateTime(df.iloc[0]['time']))
+            return 60
 
     @staticmethod
     def __get_starttime(df):
@@ -631,6 +635,7 @@ class SAM:
         contents=""
         for i, trid in enumerate(self.dataframes):
             df = self.dataframes[trid]
+            print(df)
             if i==0:
                 contents += f"Metrics: {','.join(df.columns[1:])}" + '\n'
                 contents += f"Sampling Interval={self.get_sampling_interval(df)} s" + '\n\n'
