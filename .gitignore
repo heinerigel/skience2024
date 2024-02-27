@@ -2,15 +2,13 @@ SDS/
 SDS_*/
 .DS_Store
 *.pickle
-*.pkl
+#*.pkl
 *.png
-*.pdf
+#*.pdf
 *.doc*
 *.swp
 obsolete/
-db/
-data/
-rawdata/
+XX_*
 Untitled*.ipynb
 *.tar
 # Byte-compiled / optimized / DLL files
@@ -18,8 +16,8 @@ __pycache__/
 *.py[cod]
 *$py.class
 ._*/
-Monday_Afternoon/._data
-Monday_Afternoon/data/continuous/._*
+VolcanoSeismicMonitoring/._data
+VolcanoSeismicMonitoring/data
 
 
 # C extensions
