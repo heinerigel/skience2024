@@ -555,7 +555,7 @@ class SAM:
     @staticmethod
     def check_units(st):
         good_st = st
-        print('SAM')
+        #print('SAM')
         return good_st
     
     @staticmethod
@@ -644,7 +644,7 @@ class RSAM(SAM):
         
     @staticmethod
     def check_units(st):
-        print('RSAM')
+        #print('RSAM')
         good_st = obspy.core.Stream()
         for tr in st:
             if 'units' in tr.stats:
@@ -718,7 +718,7 @@ class VSAM(SAM):
 
     @staticmethod
     def check_units(st):
-        print('VSAM')
+        #print('VSAM')
         good_st = obspy.core.Stream()
         for tr in st:
             if 'units' in tr.stats:
@@ -808,7 +808,7 @@ class DSAM(VSAM):
     
     @staticmethod
     def check_units(st):
-        print('DSAM')
+        #print('DSAM')
         good_st = obspy.core.Stream()
         for tr in st:
             if 'units' in tr.stats:
@@ -921,7 +921,7 @@ class VSEM(VSAM):
 
     @staticmethod
     def check_units(st):
-        print('VSEM')
+        #print('VSEM')
         good_st = obspy.core.Stream()
         for tr in st:
             if 'units' in tr.stats:

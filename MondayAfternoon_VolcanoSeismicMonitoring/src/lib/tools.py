@@ -35,24 +35,21 @@ def tree(dir_path: Path, prefix: str=''):
             yield from tree(path, prefix=prefix+extension)
 
 class VolcanoSeismicCatalog(Catalog):
-    def __init__(self, events=None, streams=None, triggers=None, triggerMethod=None, \
+    def __init__(self, events=None, streams=None, triggers=None, miniseedfiles=None, triggerMethod=None, \
                  threshON=None, threshOFF=None, sta=None, lta=None, max_secs=None, \
                  starttime=None, endtime=None,
                  pretrig=None, posttrig=None, **kwargs):
+        self.events = []
         self.streams = []
         self.triggers = []
         self.miniseedfiles = []
-        if not events:
-            self.events = []
-        else:
+        if events:
             self.events = events
-        if not streams:
-            self.streams = []
-        else:
+        if streams:
             self.streams = streams
-        if not triggers:
-            self.triggers = []
-        else:
+        if miniseedfiles:
+            self.miniseedfiles = miniseedfiles          
+        if triggers:
             self.triggers = triggers 
         self.triggerParams = {'method':triggerMethod, 'threshON':threshON, 'threshOFF':threshOFF, 'sta':sta, \
                               'lta':lta, 'max_secs':max_secs, 'pretrig':pretrig, 'posttrig':posttrig}   
@@ -128,7 +125,7 @@ class VolcanoSeismicCatalog(Catalog):
         df['latitude'] = pd.Series(lats)
         df['longitude'] = pd.Series(longs)
         df['depth'] = pd.Series(depths)
-        df['durations'] = pd.Series(durations)
+        df['duration'] = pd.Series(durations)
         #df['starttime'] = pd.Series(pretrigdt)
         #df['endtime'] = pd.Series(posttrigdt)
         df['filename'] = [t.strftime('%Y%m%dT%H%M%S') for t in self.get_times()]
@@ -150,28 +147,30 @@ class VolcanoSeismicCatalog(Catalog):
     def plot_eventrate(self, binsize=pd.Timedelta(days=1), time_limits=None):
         # input times are obspy.UTCDateTime but all converted to datetime.datetime inside function
         times = self.get_times()
+        '''
         if time_limits:
             stime = time_limits[0].datetime
             etime = time_limits[1].datetime
         else:
             stime = times[0].datetime
             etime = times[-1].datetime
-        counts = np.cumsum(np.ones(len(times)))
+        '''
+        #counts = np.cumsum(np.ones(len(times)))
         #times.insert(0, self.starttime) 
         #times.append(self.endtime)
         #counts = np.insert(counts, 0, 0)
         #counts = np.append(counts, counts[-1])
-        plt.figure()
-        plt.plot([t.datetime for t in times], counts)
+        #plt.figure()
+        #plt.plot([t.datetime for t in times], counts)
 
         #df = self.to_catalog_dataframe()
         df = self.catalog2dataframe()
-        df['counts']=pd.Series([1 for i in range(len(df))])
+        df['counts']=pd.Series([1 for i in rangeobspy.core.event.read_events(len(df))])
         dfsum = df.set_index('datetime').resample(binsize).sum() 
         dfsum['cumcounts'] = dfsum['counts'].cumsum()
         #dfsum.drop(labels=['mag'])
         dfsum['cumenergy'] = dfsum['energy'].cumsum()
-        print(dfsum)
+        #print(dfsum)
         numevents = len(df)
         if numevents > 0:
             fig1 = plt.figure()
@@ -204,14 +203,24 @@ class VolcanoSeismicCatalog(Catalog):
             #plot_energy(ax23, dfsum, stime, etime)
 
 # SCAFFOLD: need to reconstruct a catalog object from a dataframe
-def load_catalog_dataframe(pklfile):
-    cat = VolcanoSeismicCatalog(triggerMethod=None, threshON=threshON, threshOFF=threshOFF, \
-                       sta=sta_secs, lta=lta_secs, max_secs=max_secs, \
-                       pretrig=pretrig, posttrig=posttrig, starttime=stream[0].stats.starttime, endtime=stream[0].stats.endtime) 
+from obspy.core.event import read_events
+def load_catalog(pklfile, qmlfile):
+    EVENTS_DIR = os.path.dirname(pklfile)
+
     if os.path.exists(pklfile):
         print(f'Loading {pklfile}')
-        df = pd.read_pickle(pklfile, index_col=None)
-        return df
+        df = pd.read_pickle(pklfile)
+        mseedfiles = [os.path.join(EVENTS_DIR, filename + '.mseed') for filename in df['filename']]
+        #print(mseedfiles)
+        #print(df)
+        catObj = read_events(qmlfile)
+        volcanoSeismicCatObj = VolcanoSeismicCatalog( events=catObj.events.copy(), miniseedfiles = mseedfiles )
+        '''
+                        triggerMethod=None, threshON=threshON, threshOFF=threshOFF, \
+                       sta=sta_secs, lta=lta_secs, max_secs=max_secs, \
+                       pretrig=pretrig, posttrig=posttrig, starttime=stream[0].stats.starttime, endtime=stream[0].stats.endtime) 
+        '''
+        return df, volcanoSeismicCatObj 
     else:
         print(pklfile, ' not found')
         return None
