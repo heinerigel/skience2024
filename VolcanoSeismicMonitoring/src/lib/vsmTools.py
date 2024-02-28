@@ -519,7 +519,77 @@ def compute_bins(df, stime=None, etime=None, binsize=None):
 	print 'snum: %s' % datenum2datestr(snum)
 	print 'enum: %s' % datenum2datestr(enum)
         return bins, snum, enum
-'''            
+''' 
+
+def compute_metrics(st, evtime, duration, inv, show_response_plots=False, show_stream_plots=False, show_frequency_plots=False, interactive=False, return_dominantF=False, pre_filt = [0.25, 0.5, 25, 50]):
+    for tr in st:
+        tr.stats['units'] = 'Counts'
+    st.detrend('linear')
+    #st.taper(0.05, type='hann')
+    if show_stream_plots:
+        st.plot();
+    
+    vel = st.copy()
+    vel.remove_response(inventory=inv, pre_filt=pre_filt, output="VEL", plot=show_response_plots) 
+    for tr in vel:
+        tr.stats['units'] = 'm/s'
+    if show_stream_plots:
+        vel.plot();
+    vel.trim(starttime=evtime, endtime=evtime+duration)
+    
+    disp = st.copy()
+    disp.remove_response(inventory=inv, pre_filt=pre_filt, output="DISP", plot=show_response_plots) 
+    for tr in disp:
+        tr.stats['units'] = 'm'
+    if show_stream_plots:
+        disp.plot();
+    disp.trim(starttime=evtime, endtime=evtime+duration)
+
+    # Generate a Velocity Seismic Amplitude Measurement (VSAM) object - units must be 'm/s' else will not work
+    vsamObj = VSAM(stream=vel, sampling_interval=2.56)
+    #print(vsamObj)  
+    if show_frequency_plots:
+        try:
+            vsamObj.plot(metrics=['fratio'])
+        except:
+            if interactive:
+                input('<ENTER> to continue')    
+            return None
+            
+    if return_dominantF:
+        # Generate a Displacement Seismic Amplitude Measurement (DSAM) object - units must be 'm' else will not work
+        dsamObj = DSAM(stream=disp, sampling_interval=2.56)
+        #print(dsamObj)
+        #dsamObj.plot()
+    
+        N = len(st)
+        vsam_stream = vsamObj.to_stream()
+        dsam_stream = dsamObj.to_stream()
+        dfdom = pd.DataFrame()
+        dfdom['datetime'] = [t.datetime for t in vsam_stream[0].times('utcdatetime')]
+        for c in range(N):
+            fdominant = np.divide(np.absolute(vsam_stream[c].data), np.absolute(dsam_stream[c].data)) / (2 * np.pi)
+            dfdom[vsam_stream[c].id] = fdominant
+        if show_frequency_plots:
+            dfdom.plot(x='datetime', ylabel='Dominant Frequency (Hz)')
+        dfdom['mean'] = dfdom.mean(axis=1, numeric_only=True)
+    else:
+        dfdom = None
+
+    dfratio = pd.DataFrame()
+    for i, seed_id in enumerate(vsamObj.dataframes):
+        df = vsamObj.dataframes[seed_id]
+        #print(df.columns)
+        if i==0:
+            dfratio['datetime'] = [obspy.core.UTCDateTime(t).datetime for t in df['time']]
+        dfratio[seed_id] = df['fratio']
+    dfratio['mean'] = dfratio.mean(axis=1, numeric_only=True)
+    #print(dfratio)
+    
+    if interactive:
+        input('<ENTER> to continue')
+    return dfdom, dfratio
+
 if __name__ == "__main__":
     print('Tree listing of current directory')
     for line in tree(Path.cwd().joinpath('.')):
