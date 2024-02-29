@@ -31,6 +31,7 @@ dependencies:
   - pytz
   - git
   - pygmt
+  - ipympl
   - pip:
     - git+https://github.com/ROBelgium/MSNoise.git
     - disba
