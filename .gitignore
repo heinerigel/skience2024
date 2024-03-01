@@ -1,5 +1,6 @@
 SDS/
 extras/
+events/WAV/
 .DS_Store
 *.swp
 obsolete/

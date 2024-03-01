@@ -93,6 +93,9 @@ class VolcanoSeismicCatalog(Catalog):
             if not st:
                 continue
             mseedfile = os.path.join(outdir, 'WAV', net, times[i].strftime('%Y'), times[i].strftime('%m'), times[i].strftime('%Y%m%dT%H%M%S.mseed'))
+            mseeddir = os.path.dirname(mseedfile)
+            if not os.path.isdir(mseeddir):
+                os.makedirs(mseeddir)
             self.miniseedfiles.append(mseedfile)
             '''
             if not xmlfile:
@@ -260,8 +263,10 @@ def triggers2catalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_sec
         magnitude_objects = []
         stationmag_objects = []
         sta_mags = []
+        #print(stream)
         if stream:
             this_st = stream.copy().trim(starttime=thistrig['time']-pretrig, endtime=thistrig['time']+thistrig['duration']+posttrig)
+            #print(this_st)
             for i, seed_id in enumerate(thistrig['trace_ids']):
                 sta_amp = np.nanmax(np.absolute(this_st[i].data))
                 amp_obj = Amplitude(snr=thistrig['cft_peaks'][i], generic_amplitude=sta_amp, \
