@@ -1,17 +1,8 @@
 SDS/
-SDS_*/
-_extras/
+extras/
 .DS_Store
-*.pickle
-*.pkl
-*.png
-*.pdf
-*.doc*
 *.swp
 obsolete/
-db/
-data/
-rawdata/
 Untitled*.ipynb
 *.tar
 # Byte-compiled / optimized / DLL files
@@ -19,8 +10,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 ._*/
-Monday_Afternoon/._data
-Monday_Afternoon/data/continuous/._*
 
 
 # C extensions
