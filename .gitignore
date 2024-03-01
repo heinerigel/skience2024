@@ -1,5 +1,6 @@
 SDS/
 SDS_*/
+_extras/
 .DS_Store
 *.pickle
 *.pkl
