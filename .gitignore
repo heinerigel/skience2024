@@ -2,7 +2,9 @@ SDS/
 extras/
 02 Volcano Monitoring/data/events/WAV/
 "02 Volcano Monitoring/data/events/WAV/"
+200307*.mseed
 WAV/
+MV/
 .DS_Store
 *.swp
 obsolete/
