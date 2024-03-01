@@ -1,0 +1,61 @@
+Dataset Information:
+
+Dataset Name: Shuttle Radar Topography Mission (SRTM GL1) Global 30m(SRTM_GL1)
+
+Dataset Acknowledgement: 
+Citing LP DAVV and Data Products: https://lpdaac.usgs.gov/about/citing_lp_daac_and_data
+
+  If you wish to cite the SRTM products in a report or publication please use: 
+ Farr, T. G., and M. Kobrick, 2000, Shuttle Radar Topography Mission produces a wealth of data. Eos Trans. AGU, 81:583-583.
+
+  Farr, T. G. et al., 2007, The Shuttle Radar Topography Mission, Rev. Geophys., 45, RG2004, doi:10.1029/2005RG000183. (Also available online at http://www2.jpl.nasa.gov/srtm/SRTM_paper.pdf)
+
+  Kobrick, M., 2006, On the toes of giants--How SRTM was born, Photogramm. Eng. Remote Sens., 72:206-210.
+
+  Rosen, P. A. et al., 2000, Synthetic aperture radar interferometry, Proc. IEEE, 88:333-382.
+
+Data Access Acknowledgement: This material is based on [data, processing] services provided by the OpenTopography Facility with support from the National Science Foundation under NSF Award Numbers 1833703, 1833643, and 1833632.
+
+Dataset Citation: NASA Shuttle Radar Topography Mission (SRTM)(2013). Shuttle Radar Topography Mission (SRTM) Global.  Distributed by OpenTopography.  https://doi.org/10.5069/G9445JDF. Accessed: 2024-02-21
+
+Horizontal Coordinates: WGS84 [EPSG: 4326]
+Vertical Coordinates: WGS84 (EGM96 GEOID)
+
+Job Description:
+	User:[Guest] j.wassermann@lmu.de
+	Job ID: rt1708504608653
+	Title: Merapi
+	Description:Merapi-Volcano source trackong
+
+Job Processing Result:
+	Submission Time: 2024-02-21 08:36:48
+	Completion Time: 2024-02-21 08:36:59
+	Duration: 11 seconds
+	Status: Done
+
+Data Selection Coordinates: 
+	Xmin: 110.28845429420473
+	Xmax: 110.64332127571106
+	Ymin: -7.686824838501053
+	Ymax: -7.410920503923094
+
+Input & Output Options: 
+	Data Type: Global
+	Output Format: Arc ASCII Grid
+	Layer Type: 
+
+Raster Visualization: None
+
+Canopy Height Model:
+	Enable Canopy Height Model: No
+
+Hydrologic Terrain Analysis (TauDEM) Products:
+	Hydrologically correct DEM with pits filled: No
+	D-Infinity Flow Direction : No
+	D-Infinity Specific Catchment Area: No
+	Topographic Wetness Index: No
+	D8 Flow Direction: No
+	tauDemD8FlowDir: No
+
+Contour Lines:
+	Generate contour lines: No
