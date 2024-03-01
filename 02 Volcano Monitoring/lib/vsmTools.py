@@ -135,9 +135,19 @@ class VolcanoSeismicCatalog(Catalog):
         df['depth'] = pd.Series(depths)
         #df['duration'] = pd.Series(durations)
         df['filename'] = [t.strftime('%Y%m%dT%H%M%S') for t in self.get_times()]
+        if len(self.triggers)>0:
+            if isinstance(self.triggers, list):
+                durations = []
+                for this_trig in self.triggers:
+                    durations.append(this_trig['duration'])
+                df['duration'] = pd.Series(durations)
+        else:
+            df['duration'] = None        
         if len(self.classifications)>0:
             if isinstance(self.classifications, list):
-                df['classifications'] = pd.Series(self.classifications)
+                df['classification'] = pd.Series(self.classifications)
+        else:
+            df['classification'] = None
         return df
 
     def save(self, outdir, outfile, net='MV'):
@@ -172,37 +182,68 @@ class VolcanoSeismicCatalog(Catalog):
             
     def plot_eventrate(self, binsize=pd.Timedelta(days=1), time_limits=None):
         # input times are obspy.UTCDateTime but all converted to datetime.datetime inside function
-        times = self.get_times()
-        '''
-        if time_limits:
-            stime = time_limits[0].datetime
-            etime = time_limits[1].datetime
-        else:
-            stime = times[0].datetime
-            etime = times[-1].datetime
-        '''
-        
+        #times = self.get_times()
+    
         df = self.to_dataframe()
+        dfsum = plot_eventrate(df, binsize=binsize, time_limits=time_limits)
+
+        '''
         df['counts']=pd.Series([1 for i in range(len(df))])
+        if time_limits:
+            sdate= time_limits[0]
+            edate = time_limits[1]
+            mask = (df['datetime'] >= sdate) & (df['datetime'] <= edate)
+            df = df.loc[mask]
+            
+        #df['counts']=pd.Series([1 for i in range(len(df))])
         dfsum = df.set_index('datetime').resample(binsize).sum() 
         dfsum['cumcounts'] = dfsum['counts'].cumsum()
-        #dfsum.drop(labels=['mag'])
         dfsum['cumenergy'] = dfsum['energy'].cumsum()
-        #print(dfsum)
         numevents = len(df)
         if numevents > 0:
-            fig1 = plt.figure()
-            ax1 = fig1.add_subplot(311)
-            df.plot(ax=ax1, x='datetime', y='magnitude', kind='scatter', style='o', xlabel='Time', ylabel='magnitude', rot=90)
-            ax2 = fig1.add_subplot(312)
-            dfsum.plot.line(ax=ax2, y='counts', style='b', ylabel='Counts')
-            dfsum.plot.line(ax=ax2, y='cumcounts', secondary_y=True, style='g', ylabel='Cumulative')
+            fig1, axs = plt.subplots(2, 1, sharex=True)
+            #df.plot(ax=axs[0], x='datetime', y='magnitude', kind='scatter', style='o', xlabel='Time', ylabel='magnitude', rot=90, grid=True)
+            ##axs[0].set_xticklabels = []
+            
+            dfsum.plot.line(ax=axs[0], y='counts', style='b', ylabel='Counts')
+            dfsum.plot.line(ax=axs[0], y='cumcounts', secondary_y=True, style='g', ylabel='Cumulative', rot=90, grid=True)
+            axs[0].set_xticklabels = []
 
             # add subplot - energy versus time
-            ax3 = fig1.add_subplot(313)
-            dfsum.plot.line(ax=ax3, y='energy', style='b', ylabel='Energy')
-            dfsum.plot.line(ax=ax3, y='cumenergy', secondary_y=True, style='g', ylabel='Cumulative')
+            dfsum.plot.line(ax=axs[1], y='energy', style='b', ylabel='Energy')
+            dfsum.plot.line(ax=axs[1], y='cumenergy', secondary_y=True, style='g', ylabel='Cumulative', rot=90, grid=True)
+        '''
+        return dfsum
 
+
+def plot_eventrate(df, binsize=pd.Timedelta(days=1), time_limits=None):
+    df['counts']=pd.Series([1 for i in range(len(df))])
+    if time_limits:
+        sdate= time_limits[0]
+        edate = time_limits[1]
+        mask = (df['datetime'] >= sdate) & (df['datetime'] <= edate)
+        df = df.loc[mask]
+        
+    #df['counts']=pd.Series([1 for i in range(len(df))])
+    dfsum = df.set_index('datetime').resample(binsize).sum() 
+    dfsum['cumcounts'] = dfsum['counts'].cumsum()
+    dfsum['cumenergy'] = dfsum['energy'].cumsum()
+    numevents = len(df)
+    if numevents > 0:
+        fig1, axs = plt.subplots(2, 1, sharex=True)
+        #df.plot(ax=axs[0], x='datetime', y='magnitude', kind='scatter', style='o', xlabel='Time', ylabel='magnitude', rot=90, grid=True)
+        ##axs[0].set_xticklabels = []
+        
+        dfsum.plot.line(ax=axs[0], y='counts', style='b', ylabel='Counts')
+        dfsum.plot.line(ax=axs[0], y='cumcounts', secondary_y=True, style='g', ylabel='Cumulative', rot=90, grid=True)
+        axs[0].set_xticklabels = []
+
+        # add subplot - energy versus time
+        dfsum.plot.line(ax=axs[1], y='energy', style='b', ylabel='Energy')
+        dfsum.plot.line(ax=axs[1], y='cumenergy', secondary_y=True, style='g', ylabel='Cumulative', rot=90, grid=True)
+
+        plt.show()
+    return dfsum
 
 # SCAFFOLD: need to reconstruct a catalog object from a dataframe
 from obspy.core.event import read_events
@@ -274,7 +315,7 @@ def triggers2catalog(trig, triggerMethod, threshON, threshOFF, sta_secs, lta_sec
                 amplitude_objects.append(amp_obj)
                 sta_mag = np.log10(sta_amp)-2.5 # SCAFFOLD: not a real magnitude
                 sta_mags.append(sta_mag)
-                stationmag_objects.append(StationMagnitude(mag=sta_mag, mag_type='M'))
+                stationmag_objects.append(StationMagnitude(mag=sta_mag, mag_type='M', waveform_id = WaveformStreamID(seed_string=this_st[i].id) ))
             avg_mag = np.nanmean(sta_mags)
             networkmag_object = Magnitude(mag=avg_mag, mag_type='M')
             magnitude_objects.append(networkmag_object)
