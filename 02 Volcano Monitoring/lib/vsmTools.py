@@ -115,7 +115,8 @@ class VolcanoSeismicCatalog(Catalog):
         longs = []
         depths = []
         for eventObj in self.events:
-            magnitudes.append(eventObj.magnitudes[0]['mag'])
+            for m in eventObj.magnitudes:
+                magnitudes.append(eventObj.magnitudes[0]['mag'])
             if len(eventObj.origins)>0:
                 orObj = eventObj.origins[0]
                 lats.append(orObj.latitude)
