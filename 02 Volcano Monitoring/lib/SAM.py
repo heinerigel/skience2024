@@ -181,6 +181,10 @@ class SAM:
         if id in self.__get_trace_ids():
             del self.dataframes[id]
 
+    def ffm(self):
+        # To do. 1/RSAM plots and work out where intersect y-axis.
+        pass
+
     def get_distance_km(self, inventory, source):
         distance_km = {}
         coordinates = {}
@@ -289,9 +293,10 @@ class SAM:
             trace_ids = []
             for year in range(startt.year, endt.year+1):
                 samfilepattern = classref.get_filename(SAM_DIR, '*', year, sampling_interval, ext)
-                #print(samfilepattern)
+                print(samfilepattern)
                 samfiles = glob.glob(samfilepattern)
-                #print(samfiles)
+                if len(samfiles)==0:
+                    print(f'No files found matching {samfilepattern}')
                 #samfiles = glob.glob(os.path.join(SAM_DIR,'SAM_*_[0-9][0-9][0-9][0-9]_%ds.%s' % (sampling_interval, ext )))
                 for samfile in samfiles:
                     parts = samfile.split('_')
@@ -303,10 +308,9 @@ class SAM:
             df_list = []
             for yyyy in range(startt.year, endt.year+1):
                 samfile = classref.get_filename(SAM_DIR, id, yyyy, sampling_interval, ext)
-                #print(samfile)
                 #samfile = os.path.join(SAM_DIR,'SAM_%s_%4d_%ds.%s' % (id, yyyy, sampling_interval, ext))
                 if os.path.isfile(samfile):
-                    #print('Reading ',samfile)
+                    print('Reading ',samfile)
                     if ext=='csv':
                         df = pd.read_csv(samfile, index_col=False)
                     elif ext=='pickle':
@@ -322,6 +326,8 @@ class SAM:
                     subset_df = df[mask]
                     subset_df = subset_df.drop(columns=['pddatetime'])
                     df_list.append(subset_df)
+                else:
+                    print(f"Cannot find {samfile}")
             if len(df_list)==1:
                 dataframes[id] = df_list[0]
             elif len(df_list)>1:
@@ -414,7 +420,7 @@ class SAM:
         # For st.select(id=) without wildcards, use a quicker comparison mode:
         quick_check = False
         quick_check_possible = (id is not None
-                                and sampling_rate is None and npts is None
+                                #and sampling_rate is None and npts is None
                                 and network is None and station is None
                                 and location is None and channel is None
                                 and component is None)
@@ -432,7 +438,7 @@ class SAM:
                         and thissta.upper() == sta
                         and thisloc.upper() == loc
                         and thischan.upper() == chan):
-                    dataframes.append(thisdf)
+                    dataframes[thisid]=thisdf
                 continue
             # skip trace if any given criterion is not matched
             if id and not fnmatch.fnmatch(thisid.upper(), id.upper()):
@@ -823,6 +829,11 @@ class DSAM(VSAM):
                 u = tr.stats['units'].upper()
                 if u == 'M' or u == 'PA':
                     good_st.append(tr)
+            else:
+                if tr.stats.channel[1]=='H':
+                    tr.stats['units'] = 'm'
+                    good_st.append(tr)
+                
         return good_st
 
     @staticmethod
@@ -874,10 +885,11 @@ class VSEM(VSAM):
             # empty VSEM object
             print('creating blank VSEM object')
             return
-        
+
         good_stream = self.check_units(stream)
         if verbose:
             print('good_stream:\n',good_stream)
+
 
         if len(good_stream)>0:
             if good_stream[0].stats.sampling_rate == 1/sampling_interval:
@@ -934,8 +946,13 @@ class VSEM(VSAM):
         for tr in st:
             if 'units' in tr.stats:
                 u = tr.stats['units'].upper()
-                if u == 'M2/S' or u == 'PA2':
+                if u == 'M/S' or u == 'PA':
+                #if u == 'M2/S' or u == 'PA2':
                     good_st.append(tr)
+            elif tr.stats.channel[1]=='H':
+                tr.stats['units'] = 'm/s'
+                good_st.append(tr)
+                
         return good_st  
     
     def reduce(self, inventory, source, Q=None, wavespeed_kms=None, fixpeakf=None):
@@ -946,10 +963,7 @@ class VSEM(VSAM):
         # Otherwise, need to pass an inventory here.
 
         if not wavespeed_kms:
-            if surfaceWaves:
-                wavespeed_kms=2 # km/s
-            else:
-                wavespeed_kms=3 # km/s
+            wavespeed_kms=3 # km/s
         
         # Need to pass a source too, which should be a dict with name, lat, lon, elev.
         distance_km, coordinates = self.get_distance_km(inventory, source)
@@ -982,8 +996,8 @@ class VSEM(VSAM):
             corrected_dataframes[seed_id] = df
         return corrected_dataframes
        
-    def compute_reduced_energy(self, inventory, source, surfaceWaves=False, Q=None):
-        corrected_dataframes = self.reduce(inventory, source, surfaceWaves=surfaceWaves, Q=Q)
+    def compute_reduced_energy(self, inventory, source, Q=None):
+        corrected_dataframes = self.reduce(inventory, source, Q=Q)
         return ER(dataframes=corrected_dataframes)
 
     @staticmethod

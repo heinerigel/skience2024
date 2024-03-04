@@ -35,16 +35,17 @@ https://www.skience.de/2024
    
    (skience24) $ ` msnoise utils test `
    
-5) To eventually delete the environment again type (after the workshop, of course):
 
-    ` conda env remove --name skience24 `
+5) Clone the git repository
 
-6) Clone the git repository
+    in the console, in a folder of your choice (change directory with "cd"), activate the environment and run:
    
-    TODO!!!
+    (skience24) $ ` git clone https://github.com/heinerigel/skience2024.git `
 
 If you have issues with the setup, please share the error messages on Mattermost -> Channel "Installation - Software Issues" !
 
 
-For reference, a quick explanation on conda environment setup with yaml files can also be found here: 
-https://medium.com/@balance1150/how-to-build-a-conda-environment-through-a-yaml-file-db185acf5d22
+
+To eventually delete the environment again type (after the workshop, of course):
+
+    ` conda env remove --name skience24 `
