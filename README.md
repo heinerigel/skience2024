@@ -40,8 +40,10 @@ https://www.skience.de/2024
     ` conda env remove --name skience24 `
 
 6) Clone the git repository
+
+    in the console, in a folder of your choice (change directory with "cd"), activate the environment and run:
    
-    TODO!!!
+    (skience24) $ ` git clone https://github.com/heinerigel/skience2024.git `
 
 If you have issues with the setup, please share the error messages on Mattermost -> Channel "Installation - Software Issues" !
 
