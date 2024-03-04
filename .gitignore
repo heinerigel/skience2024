@@ -5,6 +5,7 @@ extras/
 200307*.mseed
 WAV/
 MV/
+RSAM_1997.ipynb
 .DS_Store
 *.swp
 obsolete/
