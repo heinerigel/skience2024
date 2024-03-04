@@ -47,6 +47,3 @@ https://www.skience.de/2024
 
 If you have issues with the setup, please share the error messages on Mattermost -> Channel "Installation - Software Issues" !
 
-
-For reference, a quick explanation on conda environment setup with yaml files can also be found here: 
-https://medium.com/@balance1150/how-to-build-a-conda-environment-through-a-yaml-file-db185acf5d22
