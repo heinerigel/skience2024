@@ -6,6 +6,7 @@ extras/
 WAV/
 MV/
 RSAM_1997.ipynb
+RSAM_MV*.csv
 .DS_Store
 *.swp
 obsolete/

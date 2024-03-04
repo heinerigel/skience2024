@@ -181,6 +181,10 @@ class SAM:
         if id in self.__get_trace_ids():
             del self.dataframes[id]
 
+    def ffm(self):
+        # To do. 1/RSAM plots and work out where intersect y-axis.
+        pass
+
     def get_distance_km(self, inventory, source):
         distance_km = {}
         coordinates = {}
@@ -416,7 +420,7 @@ class SAM:
         # For st.select(id=) without wildcards, use a quicker comparison mode:
         quick_check = False
         quick_check_possible = (id is not None
-                                and sampling_rate is None and npts is None
+                                #and sampling_rate is None and npts is None
                                 and network is None and station is None
                                 and location is None and channel is None
                                 and component is None)
@@ -434,7 +438,7 @@ class SAM:
                         and thissta.upper() == sta
                         and thisloc.upper() == loc
                         and thischan.upper() == chan):
-                    dataframes.append(thisdf)
+                    dataframes[thisid]=thisdf
                 continue
             # skip trace if any given criterion is not matched
             if id and not fnmatch.fnmatch(thisid.upper(), id.upper()):

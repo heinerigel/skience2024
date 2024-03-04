@@ -18,8 +18,8 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 from scipy import interpolate
 
 # for wrappers - might split off into their own module
-import SDS
-import InventoryTools
+#import SDS
+#import InventoryTools
 import os
 
 '''
