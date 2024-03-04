@@ -35,11 +35,8 @@ https://www.skience.de/2024
    
    (skience24) $ ` msnoise utils test `
    
-5) To eventually delete the environment again type (after the workshop, of course):
 
-    ` conda env remove --name skience24 `
-
-6) Clone the git repository
+5) Clone the git repository
 
     in the console, in a folder of your choice (change directory with "cd"), activate the environment and run:
    
@@ -47,3 +44,8 @@ https://www.skience.de/2024
 
 If you have issues with the setup, please share the error messages on Mattermost -> Channel "Installation - Software Issues" !
 
+
+
+To eventually delete the environment again type (after the workshop, of course):
+
+    ` conda env remove --name skience24 `
